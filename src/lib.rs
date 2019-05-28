@@ -2,6 +2,7 @@ use typenum::marker_traits::Unsigned;
 use generic_array::{ArrayLength, GenericArray};
 use curve25519_dalek::scalar::Scalar;
 use petgraph::{Graph, Directed};
+use petgraph::graph::IndexType;
 
 /// `Degree` is the degree of a monomial or a polynomial.
 #[derive(Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug)]
@@ -71,11 +72,11 @@ pub struct Circuit<M, Q, N, D>
     where M: ArrayLength<Value>,
           Q: ArrayLength<Value>,
           N: ArrayLength<Value>,
-          D: Unsigned,
+          D: Unsigned + IndexType,
 {
     pub public_inputs: Vector<M>,
     pub nondet_inputs: Vector<Q>,
     pub public_outputs: Vector<N>,
-    pub depth: D,
-    pub graph: Graph<CircuitNode<D>, (), Directed>,
+    depth: D,
+    graph: Graph<CircuitNode<D>, (), Directed, D>,
 }
