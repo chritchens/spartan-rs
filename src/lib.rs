@@ -4,6 +4,11 @@ use curve25519_dalek::scalar::Scalar;
 use petgraph::{Graph, Directed};
 use petgraph::graph::IndexType;
 
+/// `BitArray` is an array of bits.
+#[derive(Clone, Default, Eq, PartialEq, Debug)]
+pub struct BitArray<N>(GenericArray<u8, N>)
+    where N: ArrayLength<u8>;
+
 /// `Degree` is the degree of a monomial or a polynomial.
 #[derive(Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug)]
 pub struct Degree<D: Unsigned>(D);
@@ -27,12 +32,7 @@ pub struct Variable<D>
 pub struct Vector<N>(GenericArray<Value, N>)
     where N: ArrayLength<Value>;
 
-/// `BitVector` is a vector of bits.
-#[derive(Clone, Default, Eq, PartialEq, Debug)]
-pub struct BitVector<N>(GenericArray<u8, N>)
-    where N: ArrayLength<u8>;
-
-/// `Polynomial` is a of variables in the field of order q = 2^255 -19;
+/// `Polynomial` is a of variables in the field of order q = 2^255 -19.
 #[derive(Clone, Default, Eq, PartialEq, Debug)]
 pub struct Polynomial<D, N>
     where D: Unsigned,
@@ -66,7 +66,7 @@ pub struct CircuitNode<D>
     pub variable: Option<Variable<D>>,
 }
 
-/// `Circuit` is an arithmetic circuit in the field of order q = 2^255 -19;
+/// `Circuit` is an arithmetic circuit in the field of order q = 2^255 -19.
 #[derive(Clone, Default, Debug)]
 pub struct Circuit<M, Q, N, D>
     where M: ArrayLength<Value>,
