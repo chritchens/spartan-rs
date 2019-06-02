@@ -41,35 +41,32 @@ pub struct Polynomial<D, N>
     pub variables: GenericArray<Variable<D>, N>
 }
 
-/// `Op` is an arithmetic circuit operation.
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum Op {
-    Noop,
-    Sum,
-    Mul,
-}
-
-impl Default for Op {
-    fn default() -> Op {
-        Op::Noop
-    }
-}
-
 /// `Label` is a label of a node in the circuit.
 #[derive(Copy, Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
 pub struct Label(u8);
 
+/// `Op` is an arithmetic circuit operation.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum Op {
+    Add { a: Label, b: Label, c: Label },
+    Mul { a: Label, b: Label, c: Label },
+    IO  { a: Label, b: Label, c: Label },
+    Idx { a: Label },
+}
+
+impl Default for Op {
+    fn default() -> Op {
+        Op::Idx { a: Label::default() }
+    }
+}
+
 /// `Node` is a node in the arithmetic circuit in the field of order
 /// q = 2^255 -19.
 #[derive(Clone, Default, Eq, PartialEq, Debug)]
-pub struct Node<D>
-    where D: Unsigned,
-{
+pub struct Node {
     pub label: Label,
     pub op: Op,
-    pub left: Option<Label>,
-    pub right: Option<Label>,
-    pub variable: Option<Variable<D>>,
+    pub value: Option<Value>,
 }
 
 /// `Circuit` is an arithmetic circuit in the field of order q = 2^255 -19.
@@ -84,5 +81,5 @@ pub struct Circuit<M, Q, N, D>
     pub nondet_inputs: Vector<Q>,
     pub public_outputs: Vector<N>,
     length: D,
-    nodes: HashMap<Label, Node<D>>,
+    nodes: HashMap<Label, Node>,
 }
