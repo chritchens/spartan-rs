@@ -85,16 +85,15 @@ pub struct Node<S>
 
 /// `Circuit` is an arithmetic circuit in the field of order q = 2^255 -19.
 #[derive(Clone, Default, Debug)]
-pub struct Circuit<S, P, Q, R, D>
+pub struct Circuit<S, P, Q, R>
     where S: Default + Eq + Ord + Hash + ArrayLength<u8>,
           P: ArrayLength<Label<S>>,
           Q: ArrayLength<Label<S>>,
           R: ArrayLength<Label<S>>,
-          D: Unsigned,
 {
     pub public_inputs: Labels<S, P>,
     pub nondet_inputs: Labels<S, Q>,
     pub public_outputs: Labels<S, R>,
     nodes: HashMap<Label<S>, Node<S>>,
-    length: D,
+    length: u32,
 }
