@@ -1,10 +1,11 @@
 use typenum::marker_traits::Unsigned;
 use generic_array::{ArrayLength, GenericArray};
 use curve25519_dalek::scalar::Scalar;
+use std::hash::Hash;
 use std::collections::HashMap;
 
 /// `BitArray` is an array of bits.
-#[derive(Clone, Default, Eq, PartialEq, Debug)]
+#[derive(Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
 pub struct BitArray<N>(GenericArray<u8, N>)
     where N: ArrayLength<u8>;
 
@@ -42,20 +43,31 @@ pub struct Polynomial<D, N>
 }
 
 /// `Label` is a label of a node in the circuit.
-#[derive(Copy, Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
-pub struct Label(u8);
+#[derive(Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
+pub struct Label<S>(BitArray<S>)
+    where S: Default + Eq + Ord + Hash + ArrayLength<u8>;
+
+/// `Labels` is an array of labels of nodes in a Spartan arithmetic circuit.
+#[derive(Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
+pub struct Labels<S, L>(GenericArray<Label<S>, L>)
+    where S: Default + Eq + Ord + Hash + ArrayLength<u8>,
+          L: ArrayLength<Label<S>>;
 
 /// `Op` is an arithmetic circuit operation.
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum Op {
-    Add { a: Label, b: Label, c: Label },
-    Mul { a: Label, b: Label, c: Label },
-    IO  { a: Label, b: Label, c: Label },
-    Idx { a: Label },
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub enum Op<S>
+    where S: Default + Eq + Ord + Hash + ArrayLength<u8>,
+{
+    Add { a: Label<S>, b: Label<S>, c: Label<S> },
+    Mul { a: Label<S>, b: Label<S>, c: Label<S> },
+    IO  { a: Label<S>, b: Label<S>, c: Label<S> },
+    Idx { a: Label<S> },
 }
 
-impl Default for Op {
-    fn default() -> Op {
+impl<S> Default for Op<S>
+    where S: Default + Eq + Ord + Hash + ArrayLength<u8>,
+{
+    fn default() -> Op<S> {
         Op::Idx { a: Label::default() }
     }
 }
@@ -63,23 +75,26 @@ impl Default for Op {
 /// `Node` is a node in the arithmetic circuit in the field of order
 /// q = 2^255 -19.
 #[derive(Clone, Default, Eq, PartialEq, Debug)]
-pub struct Node {
-    pub label: Label,
-    pub op: Op,
+pub struct Node<S>
+    where S: Default + Eq + Ord + Hash + ArrayLength<u8>,
+{
+    pub label: Label<S>,
+    pub op: Op<S>,
     pub value: Option<Value>,
 }
 
 /// `Circuit` is an arithmetic circuit in the field of order q = 2^255 -19.
 #[derive(Clone, Default, Debug)]
-pub struct Circuit<M, Q, N, D>
-    where M: ArrayLength<Value>,
-          Q: ArrayLength<Value>,
-          N: ArrayLength<Value>,
+pub struct Circuit<S, P, Q, R, D>
+    where S: Default + Eq + Ord + Hash + ArrayLength<u8>,
+          P: ArrayLength<Label<S>>,
+          Q: ArrayLength<Label<S>>,
+          R: ArrayLength<Label<S>>,
           D: Unsigned,
 {
-    pub public_inputs: Vector<M>,
-    pub nondet_inputs: Vector<Q>,
-    pub public_outputs: Vector<N>,
+    pub public_inputs: Labels<S, P>,
+    pub nondet_inputs: Labels<S, Q>,
+    pub public_outputs: Labels<S, R>,
+    nodes: HashMap<Label<S>, Node<S>>,
     length: D,
-    nodes: HashMap<Label, Node>,
 }
