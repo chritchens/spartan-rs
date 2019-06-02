@@ -5,6 +5,8 @@ authors = ["chritchens <chritchens@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+serde = "~1.0"
+serde_derive = "~1.0"
 rand_core = "~0.3"
 rand_os = "~0.1"
 typenum = "~1.10"
@@ -14,4 +16,4 @@ sha2 = "~0.8"
 sha3 = "~0.8"
 subtle = "~2.1"
 curve25519-dalek = "~1.1"
-petgraph = "~0.4"
+bit-vec = "~0.6"

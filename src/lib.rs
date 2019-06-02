@@ -1,8 +1,7 @@
 use typenum::marker_traits::Unsigned;
 use generic_array::{ArrayLength, GenericArray};
 use curve25519_dalek::scalar::Scalar;
-use petgraph::{Graph, Directed};
-use petgraph::graph::IndexType;
+use std::collections::HashMap;
 
 /// `BitArray` is an array of bits.
 #[derive(Clone, Default, Eq, PartialEq, Debug)]
@@ -42,27 +41,34 @@ pub struct Polynomial<D, N>
     pub variables: GenericArray<Variable<D>, N>
 }
 
-/// `CircuitOp` is an arithmetic circuit operation.
+/// `Op` is an arithmetic circuit operation.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum CircuitOp {
+pub enum Op {
     Noop,
     Sum,
     Mul,
 }
 
-impl Default for CircuitOp {
-    fn default() -> CircuitOp {
-        CircuitOp::Noop
+impl Default for Op {
+    fn default() -> Op {
+        Op::Noop
     }
 }
 
-/// `CircuitNode` is a node in the arithmetic circuit in the field of order
+/// `Label` is a label of a node in the circuit.
+#[derive(Copy, Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
+pub struct Label(u8);
+
+/// `Node` is a node in the arithmetic circuit in the field of order
 /// q = 2^255 -19.
 #[derive(Clone, Default, Eq, PartialEq, Debug)]
-pub struct CircuitNode<D>
+pub struct Node<D>
     where D: Unsigned,
 {
-    pub op: CircuitOp,
+    pub label: Label,
+    pub op: Op,
+    pub left: Option<Label>,
+    pub right: Option<Label>,
     pub variable: Option<Variable<D>>,
 }
 
@@ -72,11 +78,11 @@ pub struct Circuit<M, Q, N, D>
     where M: ArrayLength<Value>,
           Q: ArrayLength<Value>,
           N: ArrayLength<Value>,
-          D: Unsigned + IndexType,
+          D: Unsigned,
 {
     pub public_inputs: Vector<M>,
     pub nondet_inputs: Vector<Q>,
     pub public_outputs: Vector<N>,
-    depth: D,
-    graph: Graph<CircuitNode<D>, (), Directed, D>,
+    length: D,
+    nodes: HashMap<Label, Node<D>>,
 }
