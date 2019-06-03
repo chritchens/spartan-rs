@@ -7,6 +7,33 @@ use std::collections::HashMap;
 #[derive(Copy, Clone, Default, Eq, PartialEq, Debug)]
 pub struct Value(Scalar);
 
+impl Value {
+    /// `new` creates a new `Value` from a `Scalar`.
+    pub fn new(s: Scalar) -> Value {
+        Value(s)
+    }
+
+    /// `random` creates a new random `Value`.
+    pub fn random() -> Result<Value, String> {
+        unreachable!()
+    }
+
+    /// `from_rng` creates a new random `Value` from a given RNG.
+    pub fn from_rng() -> Result<Value, String> {
+        unreachable!()
+    }
+
+    /// `from_bytes` creates a new Value from an array of bytes.
+    pub fn from_bytes() -> Result<Value, String> {
+        unreachable!()
+    }
+
+    /// `to_bytes` returns the `Value` as an array of bytes.
+    pub fn to_bytes() -> [u8; 32] {
+        unreachable!()
+    }
+}
+
 /// `BitArray` is an array of bits.
 #[derive(Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
 pub struct BitArray<N>(GenericArray<bool, N>)
