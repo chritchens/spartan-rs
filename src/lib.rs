@@ -2,6 +2,28 @@ use generic_array::{ArrayLength, GenericArray};
 use curve25519_dalek::scalar::Scalar;
 use std::hash::Hash;
 use std::collections::HashMap;
+use std::fmt;
+use std::error;
+use std::result;
+
+/// `Error` is the library error type.
+#[derive(Debug)]
+pub enum Error {
+    IO { msg: String, source: Option<Box<dyn error::Error + 'static>> },
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Error::IO { msg, .. }=> write!(f, "IO: {}", msg),
+        }
+    }
+}
+
+/// `Result` is the type used for fallible outputs. It's an
+/// alias to the Result type in standard library whith error
+/// the library Error type.
+pub type Result<T> = result::Result<T, Error>;
 
 /// `Value` is the a value in the field of order q = 2^255 -19.
 #[derive(Copy, Clone, Default, Eq, PartialEq, Debug)]
@@ -14,17 +36,17 @@ impl Value {
     }
 
     /// `random` creates a new random `Value`.
-    pub fn random() -> Result<Value, String> {
+    pub fn random() -> Result<Value> {
         unreachable!()
     }
 
     /// `from_rng` creates a new random `Value` from a given RNG.
-    pub fn from_rng() -> Result<Value, String> {
+    pub fn from_rng() -> Result<Value> {
         unreachable!()
     }
 
     /// `from_bytes` creates a new Value from an array of bytes.
-    pub fn from_bytes() -> Result<Value, String> {
+    pub fn from_bytes() -> Result<Value> {
         unreachable!()
     }
 
