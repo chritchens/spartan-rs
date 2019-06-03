@@ -77,6 +77,16 @@ impl Value {
     pub fn to_bytes(&self) -> [u8; 32] {
         self.0.to_bytes()
     }
+
+    /// `from_bitarray` creates a `Value` from a `BitArray<256>`.
+    pub fn from_bitarray<N: ArrayLength<bool>>(_ba: BitArray<N>) -> Result<Value> {
+        unreachable!()
+    }
+
+    /// `to_bitarray` converts the `Value` to a `BitArray<256>`.
+    pub fn to_bitarray<N: ArrayLength<bool>>(&self) -> BitArray<N> {
+        unreachable!()
+    }
 }
 
 /// `BitArray` is an array of bits.
