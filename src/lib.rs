@@ -1,3 +1,4 @@
+use typenum::consts::{U255, U256};
 use generic_array::{ArrayLength, GenericArray};
 use curve25519_dalek::scalar::Scalar;
 use rand_core::{RngCore, CryptoRng};
@@ -78,13 +79,13 @@ impl Value {
         self.0.to_bytes()
     }
 
-    /// `from_bitarray` creates a `Value` from a `BitArray<256>`.
-    pub fn from_bitarray<N: ArrayLength<bool>>(_ba: BitArray<N>) -> Result<Value> {
+    /// `from_bitarray` creates a `Value` from a `BitArray256`.
+    pub fn from_bitarray(_ba: BitArray256) -> Result<Value> {
         unreachable!()
     }
 
-    /// `to_bitarray` converts the `Value` to a `BitArray<256>`.
-    pub fn to_bitarray<N: ArrayLength<bool>>(&self) -> BitArray<N> {
+    /// `to_bitarray` converts the `Value` to a `BitArray256`.
+    pub fn to_bitarray(&self) -> BitArray256 {
         unreachable!()
     }
 }
@@ -93,6 +94,12 @@ impl Value {
 #[derive(Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
 pub struct BitArray<N>(GenericArray<bool, N>)
     where N: ArrayLength<bool>;
+
+/// `BitArray255` is an alias type for `BitArray<U255>`.
+pub type BitArray255 = BitArray<U255>;
+
+/// `BitArray256` is an alias type for `BitArray<U256>`.
+pub type BitArray256 = BitArray<U256>;
 
 /// `Label` is a label of a node in the circuit.
 #[derive(Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
