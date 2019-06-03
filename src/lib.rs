@@ -1,5 +1,7 @@
 use generic_array::{ArrayLength, GenericArray};
 use curve25519_dalek::scalar::Scalar;
+use rand_core::{RngCore, CryptoRng};
+use rand_os::OsRng;
 use std::hash::Hash;
 use std::collections::HashMap;
 use std::fmt;
@@ -10,12 +12,14 @@ use std::result;
 #[derive(Debug)]
 pub enum Error {
     IO { msg: String, source: Option<Box<dyn error::Error + 'static>> },
+    Value { msg: String, source: Option<Box<dyn error::Error + 'static>> },
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::IO { msg, .. }=> write!(f, "IO: {}", msg),
+            Error::IO { msg, .. } => write!(f, "IO: {}", msg),
+            Error::Value { msg, .. } => write!(f, "Value: {}", msg),
         }
     }
 }
@@ -37,22 +41,41 @@ impl Value {
 
     /// `random` creates a new random `Value`.
     pub fn random() -> Result<Value> {
-        unreachable!()
+        let mut rng = OsRng::new()
+            .map_err(|e| {
+                let msg = format!("{}", e);
+                let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+                Error::IO { msg, source }
+            })?;
+
+        let value = Value::from_rng(&mut rng);
+        Ok(value)
     }
 
     /// `from_rng` creates a new random `Value` from a given RNG.
-    pub fn from_rng() -> Result<Value> {
-        unreachable!()
+    pub fn from_rng<R>(mut rng: &mut R) -> Value
+        where R: RngCore + CryptoRng
+    {
+        let scalar = Scalar::random(&mut rng).reduce();
+
+        Value(scalar)
     }
 
     /// `from_bytes` creates a new Value from an array of bytes.
-    pub fn from_bytes() -> Result<Value> {
-        unreachable!()
+    pub fn from_bytes(buf: [u8; 32]) -> Result<Value> {
+        if let Some(scalar) = Scalar::from_canonical_bytes(buf) {
+            Ok(Value(scalar))
+        } else {
+            let msg = "bytes are not canonical".into();
+            let source = None;
+            let err = Error::Value { msg, source };
+            Err(err)
+        }
     }
 
     /// `to_bytes` returns the `Value` as an array of bytes.
-    pub fn to_bytes() -> [u8; 32] {
-        unreachable!()
+    pub fn to_bytes(&self) -> [u8; 32] {
+        self.0.to_bytes()
     }
 }
 
