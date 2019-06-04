@@ -30,6 +30,152 @@ impl fmt::Display for Error {
 /// the library Error type.
 pub type Result<T> = result::Result<T, Error>;
 
+/// `extract_bit` extracts a bit from a given `u8`.
+fn extract_bit(n: u8, p: usize) -> bool {
+    (1 & (n >> p)) != 0
+}
+
+/// `change_bit` changes a bit of an `u8` to a given value.
+fn change_bit(n: u8, p: usize, x: bool) -> u8 {
+    let mask = 1 << p;
+    (n & !mask) | (((x as u8) << p) & mask)
+}
+
+#[test]
+fn test_extract_bit() {
+    for i in 0..8 {
+        let mut c = 0u8;
+
+        c |= 1 << i;
+
+        let c_bit = extract_bit(c, i);
+        assert!(c_bit);
+
+        c &= !(1 << i);
+
+        let c_bit = extract_bit(c, i);
+        assert!(!c_bit);
+    }
+}
+
+#[test]
+fn test_change_bit() {
+    for i in 0..8 {
+        let mut a = 0u8;
+        let mut b = 255u8;
+
+        a = change_bit(a, i, true);
+
+        let a_bit = extract_bit(a, i);
+        assert!(a_bit);
+
+        a = change_bit(a, i, false);
+
+        let a_bit = extract_bit(a, i);
+        assert!(!a_bit);
+
+        b = change_bit(b, i, false);
+
+        let b_bit = extract_bit(b, i);
+        assert!(!b_bit);
+
+        b = change_bit(b, i, true);
+
+        let b_bit = extract_bit(b, i);
+        assert!(b_bit);
+    }
+}
+
+/// `BitArray` is an array of bits.
+#[derive(Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
+pub struct BitArray<N>(GenericArray<bool, N>)
+    where N: ArrayLength<bool>;
+
+/// `BitArray255` is a wrapper around `BitArray<U255>`.
+#[derive(Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
+pub struct BitArray255(BitArray<U255>);
+
+/// `BitArray256` is a wrapper around `BitArray<U256>`.
+#[derive(Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
+pub struct BitArray256(BitArray<U256>);
+
+impl BitArray256 {
+    /// `new` creates a new `BitArray256`.
+    pub fn new() -> BitArray256 {
+        BitArray256::default()
+    }
+
+    /// `random` creates a new random `BitArray256`.
+    pub fn random() -> Result<BitArray256> {
+        let mut rng = OsRng::new()
+            .map_err(|e| {
+                let msg = format!("{}", e);
+                let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+                Error::IO { msg, source }
+            })?;
+
+        BitArray256::from_rng(&mut rng)
+    }
+
+    /// `from_rng` creates a new random `BitArray256` from a given RNG.
+    pub fn from_rng<R>(rng: &mut R) -> Result<BitArray256>
+        where R: RngCore + CryptoRng
+    {
+        let mut buf = [0u8; 32];
+        rng.try_fill_bytes(&mut buf)
+            .map_err(|e| {
+                let msg = format!("{}", e);
+                let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+                Error::IO { msg, source }
+            })?;
+
+        let ba = BitArray256::from_bytes(buf);
+        Ok(ba)
+    }
+
+    /// `from_bytes` creates a `BitArray256` from an array of bytes.
+    pub fn from_bytes(buf: [u8; 32]) -> BitArray256 {
+        let mut ba = BitArray256::default();
+
+        for i in 0..32 {
+            for j in 0..8 {
+               (ba.0).0[i*8 + j] = extract_bit(buf[i], j);
+            }
+        }
+
+        ba
+    }
+
+    /// `to_bytes` converts the `BitArray256` to an array of bytes.
+    pub fn to_bytes(&self) -> [u8; 32] {
+        let mut buf = [0u8; 32];
+
+        for i in 0..32 {
+            for j in 0..8 {
+                buf[i] = change_bit(buf[i], j, (self.0).0[i*8 +j]);
+            }
+        }
+
+        buf
+    }
+}
+
+#[test]
+fn test_bitarray_bytes() {
+    let mut rng = OsRng::new().unwrap();
+
+    for i in 0..32 {
+        for j in 0..255 {
+            let mut buf = [128u8; 32];
+            rng.fill_bytes(&mut buf);
+
+            let ba = BitArray256::from_bytes(buf);
+            let res = ba.to_bytes();
+            assert_eq!(buf, res)
+        }
+    }
+ }
+
 /// `Value` is the a value in the field of order q = 2^255 -19.
 #[derive(Copy, Clone, Default, Eq, PartialEq, Debug)]
 pub struct Value(Scalar);
@@ -58,7 +204,6 @@ impl Value {
         where R: RngCore + CryptoRng
     {
         let scalar = Scalar::random(&mut rng).reduce();
-
         Value(scalar)
     }
 
@@ -80,26 +225,38 @@ impl Value {
     }
 
     /// `from_bitarray` creates a `Value` from a `BitArray256`.
-    pub fn from_bitarray(_ba: BitArray256) -> Result<Value> {
-        unreachable!()
+    pub fn from_bitarray(ba: BitArray256) -> Result<Value> {
+        let buf = ba.to_bytes();
+
+        Value::from_bytes(buf)
     }
 
     /// `to_bitarray` converts the `Value` to a `BitArray256`.
     pub fn to_bitarray(&self) -> BitArray256 {
-        unreachable!()
+        let buf = self.to_bytes();
+        BitArray256::from_bytes(buf)
     }
 }
 
-/// `BitArray` is an array of bits.
-#[derive(Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
-pub struct BitArray<N>(GenericArray<bool, N>)
-    where N: ArrayLength<bool>;
+#[test]
+fn test_value_bites() {
+    for _ in 0..10 {
+        let value_a = Value::random().unwrap();
+        let value_bytes = value_a.to_bytes();
+        let value_b = Value::from_bytes(value_bytes).unwrap();
+        assert_eq!(value_a, value_b)
+    }
+}
 
-/// `BitArray255` is an alias type for `BitArray<U255>`.
-pub type BitArray255 = BitArray<U255>;
-
-/// `BitArray256` is an alias type for `BitArray<U256>`.
-pub type BitArray256 = BitArray<U256>;
+#[test]
+fn test_value_bitarray() {
+    for _ in 0..10 {
+        let value_a = Value::random().unwrap();
+        let value_bitarray = value_a.to_bitarray();
+        let value_b = Value::from_bitarray(value_bitarray).unwrap();
+        assert_eq!(value_a, value_b)
+    }
+}
 
 /// `Label` is a label of a node in the circuit.
 #[derive(Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
