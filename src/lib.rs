@@ -91,10 +91,6 @@ fn test_change_bit() {
 pub struct BitArray<N>(GenericArray<bool, N>)
     where N: ArrayLength<bool>;
 
-/// `BitArray255` is a wrapper around `BitArray<U255>`.
-#[derive(Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
-pub struct BitArray255(BitArray<U255>);
-
 /// `BitArray256` is a wrapper around `BitArray<U256>`.
 #[derive(Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
 pub struct BitArray256(BitArray<U256>);
