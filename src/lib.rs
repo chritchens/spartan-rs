@@ -1,4 +1,4 @@
-use typenum::consts::{U255, U256};
+use typenum::consts::U256;
 use generic_array::{ArrayLength, GenericArray};
 use curve25519_dalek::scalar::Scalar;
 use rand_core::{RngCore, CryptoRng};
@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::error;
 use std::result;
+use std::ops::{Index, IndexMut};
 
 /// `Error` is the library error type.
 #[derive(Debug)]
@@ -135,7 +136,7 @@ impl BitArray256 {
 
         for i in 0..32 {
             for j in 0..8 {
-               (ba.0).0[i*8 + j] = extract_bit(buf[i], j);
+               ba[i*8 + j] = extract_bit(buf[i], j);
             }
         }
 
@@ -148,7 +149,7 @@ impl BitArray256 {
 
         for i in 0..32 {
             for j in 0..8 {
-                buf[i] = change_bit(buf[i], j, (self.0).0[i*8 +j]);
+                buf[i] = change_bit(buf[i], j, self[i*8 +j]);
             }
         }
 
@@ -156,19 +157,31 @@ impl BitArray256 {
     }
 }
 
+impl Index<usize> for BitArray256 {
+    type Output = bool;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &(self.0).0[index]
+    }
+}
+
+impl IndexMut<usize> for BitArray256 {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        (self.0).0.index_mut(index)
+    }
+}
+
 #[test]
 fn test_bitarray_bytes() {
     let mut rng = OsRng::new().unwrap();
 
-    for i in 0..32 {
-        for j in 0..255 {
-            let mut buf = [128u8; 32];
-            rng.fill_bytes(&mut buf);
+    for _ in 0..10 {
+        let mut buf = [0u8; 32];
+        rng.fill_bytes(&mut buf);
 
-            let ba = BitArray256::from_bytes(buf);
-            let res = ba.to_bytes();
-            assert_eq!(buf, res)
-        }
+        let ba = BitArray256::from_bytes(buf);
+        let res = ba.to_bytes();
+        assert_eq!(buf, res)
     }
  }
 
