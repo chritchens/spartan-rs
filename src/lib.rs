@@ -11,18 +11,60 @@ use std::error;
 use std::result;
 use std::ops::{Index, IndexMut};
 
+/// `ErrorKind` is the type of error in `Error`.
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub enum ErrorKind {
+    IO,
+    Value,
+    Other,
+}
+
+impl Default for ErrorKind {
+    fn default() -> ErrorKind {
+        ErrorKind::IO
+    }
+}
+
 /// `Error` is the library error type.
-#[derive(Debug)]
-pub enum Error {
-    IO { msg: String, source: Option<Box<dyn error::Error + 'static>> },
-    Value { msg: String, source: Option<Box<dyn error::Error + 'static>> },
+#[derive(Debug, Default)]
+pub struct Error {
+    kind: ErrorKind,
+    msg: String,
+    source: Option<Box<dyn error::Error + 'static>>
+}
+
+impl Error {
+    /// `new` creates a new `Error`.
+    pub fn new(kind: ErrorKind, msg: &str, source: Option<Box<dyn error::Error + 'static>>) -> Error {
+        Error {
+            kind,
+            msg: msg.into(),
+            source,
+        }
+    }
+
+    /// `new_io` creates a new `Error` of type IO.
+    pub fn new_io(msg: &str, source: Option<Box<dyn error::Error + 'static>>) -> Error {
+        Error::new(ErrorKind::IO, msg, source)
+    }
+
+    /// `new_value` creates a new `Error` of type Value.
+    pub fn new_value(msg: &str, source: Option<Box<dyn error::Error + 'static>>) -> Error {
+        Error::new(ErrorKind::Value, msg, source)
+    }
+
+    /// `new_other` creates a new `Error` of type Other.
+    pub fn new_other(msg: &str, source: Option<Box<dyn error::Error + 'static>>) -> Error {
+        Error::new(ErrorKind::Other, msg, source)
+    }
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Error::IO { msg, .. } => write!(f, "IO: {}", msg),
-            Error::Value { msg, .. } => write!(f, "Value: {}", msg),
+        match self.kind {
+            ErrorKind::IO => write!(f, "IO: {}", self.msg),
+            ErrorKind::Value => write!(f, "Value: {}", self.msg),
+            ErrorKind::Other => write!(f, "Other: {}", self.msg)
         }
     }
 }
@@ -109,7 +151,7 @@ impl BitArray256 {
             .map_err(|e| {
                 let msg = format!("{}", e);
                 let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
-                Error::IO { msg, source }
+                Error::new_io(&msg, source)
             })?;
 
         BitArray256::from_rng(&mut rng)
@@ -124,7 +166,7 @@ impl BitArray256 {
             .map_err(|e| {
                 let msg = format!("{}", e);
                 let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
-                Error::IO { msg, source }
+                Error::new_io(&msg, source)
             })?;
 
         let ba = BitArray256::from_bytes(buf);
@@ -202,7 +244,7 @@ impl Value {
             .map_err(|e| {
                 let msg = format!("{}", e);
                 let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
-                Error::IO { msg, source }
+                Error::new_io(&msg, source)
             })?;
 
         let value = Value::from_rng(&mut rng);
@@ -222,9 +264,9 @@ impl Value {
         if let Some(scalar) = Scalar::from_canonical_bytes(buf) {
             Ok(Value(scalar))
         } else {
-            let msg = "bytes are not canonical".into();
+            let msg = "bytes are not canonical";
             let source = None;
-            let err = Error::Value { msg, source };
+            let err = Error::new_value(msg, source);
             Err(err)
         }
     }
