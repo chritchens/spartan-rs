@@ -3,7 +3,6 @@ use generic_array::{ArrayLength, GenericArray};
 use curve25519_dalek::scalar::Scalar;
 use rand_core::{RngCore, CryptoRng};
 use rand_os::OsRng;
-use std::hash::Hash;
 use std::collections::HashMap;
 use std::fmt;
 use std::error;
@@ -269,30 +268,63 @@ fn test_value_bitarray() {
 
 /// `Label` is a label of a node in the circuit.
 #[derive(Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
-pub struct Label<S>(BitArray<S>)
-    where S: Default + Eq + Ord + Hash + ArrayLength<bool>;
+pub struct Label(BitArray256);
+
+impl Label {
+    /// `new` creates a new `BitArray256`.
+    pub fn new(v: &Value) -> Label {
+        unreachable!()
+    }
+
+    /// `random` creates a new random `BitArray256`.
+    pub fn random() -> Result<Label> {
+        unreachable!()
+    }
+
+    /// `from_rng` creates a new random `BitArray256` from a given RNG.
+    pub fn from_rng<R>(mut rng: R) -> Result<Label>
+        where R: RngCore + CryptoRng
+    {
+        unreachable!()
+    }
+
+    /// `from_bytes` creates a `BitArray256` from an array of bytes.
+    pub fn from_bytes(buf: [u8; 32]) -> Label {
+        unreachable!()
+    }
+
+    /// `to_bytes` converts the `BitArray256` to an array of bytes.
+    pub fn to_bytes(&self) -> [u8; 32] {
+        unreachable!()
+    }
+
+    /// `from_bitarray` creates a `Value` from a `BitArray256`.
+    pub fn from_bitarray(buf: BitArray256) -> Label {
+        unreachable!()
+    }
+
+    /// `to_bitarray` converts the `Value` to a `BitArray256`.
+    pub fn to_bitarray(&self) -> BitArray256 {
+        unreachable!()
+    }
+}
 
 /// `Labels` is an array of labels of nodes in a Spartan arithmetic circuit.
 #[derive(Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
-pub struct Labels<S, L>(GenericArray<Label<S>, L>)
-    where S: Default + Eq + Ord + Hash + ArrayLength<bool>,
-          L: ArrayLength<Label<S>>;
+pub struct Labels<L>(GenericArray<Label, L>)
+    where L: ArrayLength<Label>;
 
 /// `Op` is an arithmetic circuit operation.
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub enum Op<S>
-    where S: Default + Eq + Ord + Hash + ArrayLength<bool>,
-{
-    Add { a: Label<S>, b: Label<S>, c: Label<S> },
-    Mul { a: Label<S>, b: Label<S>, c: Label<S> },
-    IO  { a: Label<S>, b: Label<S>, c: Label<S> },
-    Idx { a: Label<S> },
+pub enum Op {
+    Add { a: Label, b: Label, c: Label },
+    Mul { a: Label, b: Label, c: Label },
+    IO  { a: Label, b: Label, c: Label },
+    Idx { a: Label },
 }
 
-impl<S> Default for Op<S>
-    where S: Default + Eq + Ord + Hash + ArrayLength<bool>,
-{
-    fn default() -> Op<S> {
+impl Default for Op {
+    fn default() -> Op {
         Op::Idx { a: Label::default() }
     }
 }
@@ -300,25 +332,22 @@ impl<S> Default for Op<S>
 /// `Node` is a node in the arithmetic circuit in the field of order
 /// q = 2^255 -19.
 #[derive(Clone, Default, Eq, PartialEq, Debug)]
-pub struct Node<S>
-    where S: Default + Eq + Ord + Hash + ArrayLength<bool>,
-{
-    pub label: Label<S>,
-    pub op: Op<S>,
+pub struct Node {
+    pub label: Label,
+    pub op: Op,
     pub value: Option<Value>,
 }
 
 /// `Circuit` is an arithmetic circuit in the field of order q = 2^255 -19.
 #[derive(Clone, Default, Debug)]
-pub struct Circuit<S, P, Q, R>
-    where S: Default + Eq + Ord + Hash + ArrayLength<bool>,
-          P: ArrayLength<Label<S>>,
-          Q: ArrayLength<Label<S>>,
-          R: ArrayLength<Label<S>>,
+pub struct Circuit<P, Q, R>
+    where P: ArrayLength<Label>,
+          Q: ArrayLength<Label>,
+          R: ArrayLength<Label>,
 {
-    pub public_inputs: Labels<S, P>,
-    pub nondet_inputs: Labels<S, Q>,
-    pub public_outputs: Labels<S, R>,
-    nodes: HashMap<Label<S>, Node<S>>,
+    pub public_inputs: Labels<P>,
+    pub nondet_inputs: Labels<Q>,
+    pub public_outputs: Labels<R>,
+    nodes: HashMap<Label, Node>,
     length: u32,
 }
