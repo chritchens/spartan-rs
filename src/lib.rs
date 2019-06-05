@@ -3,6 +3,8 @@ use generic_array::{ArrayLength, GenericArray};
 use curve25519_dalek::scalar::Scalar;
 use rand_core::{RngCore, CryptoRng};
 use rand_os::OsRng;
+use digest::Digest;
+use sha2::Sha256;
 use std::collections::HashMap;
 use std::fmt;
 use std::error;
@@ -273,39 +275,59 @@ pub struct Label(BitArray256);
 impl Label {
     /// `new` creates a new `BitArray256`.
     pub fn new(v: &Value) -> Label {
-        unreachable!()
+        Label::from_value(v)
     }
 
     /// `random` creates a new random `BitArray256`.
     pub fn random() -> Result<Label> {
-        unreachable!()
+        let ba = BitArray256::random()?;
+        let label = Label(ba);
+        Ok(label)
     }
 
     /// `from_rng` creates a new random `BitArray256` from a given RNG.
-    pub fn from_rng<R>(mut rng: R) -> Result<Label>
+    pub fn from_rng<R>(rng: &mut R) -> Result<Label>
         where R: RngCore + CryptoRng
     {
-        unreachable!()
+        let ba = BitArray256::from_rng(rng)?;
+        let label = Label(ba);
+        Ok(label)
+    }
+
+    /// `from_value` creates a `BitArray256` from a `Value`.
+    pub fn from_value(v: &Value) -> Label {
+        let buf = v.to_bytes();
+        Label::from_hash(&buf[..])
+    }
+
+    /// `from_hash` creates a `BitArray256` from a SHA256 hash of a slice of bytes.
+    pub fn from_hash(buf: &[u8]) -> Label {
+        let mut hash = [0u8; 32];
+        for (i, v) in Sha256::digest(buf).as_slice().iter().enumerate() {
+            hash[i] = *v;
+        }
+        Label::from_bytes(hash)
     }
 
     /// `from_bytes` creates a `BitArray256` from an array of bytes.
     pub fn from_bytes(buf: [u8; 32]) -> Label {
-        unreachable!()
+        let ba = BitArray256::from_bytes(buf);
+        Label(ba)
     }
 
     /// `to_bytes` converts the `BitArray256` to an array of bytes.
     pub fn to_bytes(&self) -> [u8; 32] {
-        unreachable!()
+        self.0.to_bytes()
     }
 
     /// `from_bitarray` creates a `Value` from a `BitArray256`.
     pub fn from_bitarray(buf: BitArray256) -> Label {
-        unreachable!()
+       Label(buf)
     }
 
     /// `to_bitarray` converts the `Value` to a `BitArray256`.
     pub fn to_bitarray(&self) -> BitArray256 {
-        unreachable!()
+        self.0.clone()
     }
 }
 
