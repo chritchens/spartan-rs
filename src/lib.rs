@@ -375,15 +375,15 @@ pub struct Labels<L>(GenericArray<Label, L>)
 /// `Op` is an arithmetic circuit operation.
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub enum Op {
-    Add { a: Label, b: Label, c: Label },
-    Mul { a: Label, b: Label, c: Label },
-    IO  { a: Label, b: Label, c: Label },
-    Idx { a: Label },
+    Add { a: Box<Label>, b: Box<Label>, c: Box<Label> },
+    Mul { a: Box<Label>, b: Box<Label>, c: Box<Label> },
+    IO  { a: Box<Label>, b: Box<Label>, c: Box<Label> },
+    Idx { a: Box<Label> },
 }
 
 impl Default for Op {
     fn default() -> Op {
-        Op::Idx { a: Label::default() }
+        Op::Idx { a: Box::new(Label::default()) }
     }
 }
 
