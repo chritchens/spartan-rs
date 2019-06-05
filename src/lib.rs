@@ -331,6 +331,42 @@ impl Label {
     }
 }
 
+#[test]
+fn test_label_from_value() {
+    for _ in 0..10 {
+        let value_a = Value::random().unwrap();
+        let value_b = Value::random().unwrap();
+
+        let label_a = Label::from_value(&value_a);
+        let label_b = Label::from_value(&value_b);
+
+        if value_a == value_b {
+            assert_eq!(label_a, label_b);
+        } else {
+            assert!(label_a != label_b);
+        }
+    }
+}
+
+#[test]
+fn test_label_bites() {
+    for _ in 0..10 {
+        let label_a = Label::random().unwrap();
+        let label_bytes = label_a.to_bytes();
+        let label_b = Label::from_bytes(label_bytes);
+        assert_eq!(label_a, label_b)
+    }
+}
+
+#[test]
+fn test_label_bitarray() {
+    for _ in 0..10 {
+        let label_a = Label::random().unwrap();
+        let label_bitarray = label_a.to_bitarray();
+        let label_b = Label::from_bitarray(label_bitarray);
+        assert_eq!(label_a, label_b)
+    }
+}
 /// `Labels` is an array of labels of nodes in a Spartan arithmetic circuit.
 #[derive(Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
 pub struct Labels<L>(GenericArray<Label, L>)
