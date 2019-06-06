@@ -98,6 +98,14 @@ fn random_bytes(len: usize) -> Result<Vec<u8>> {
             Error::new_io(&msg, source)
         })?;
 
+    let res = random_bytes_from_rng(&mut rng, len);
+    Ok(res)
+}
+
+/// `random_bytes_from_rng` creates a vector of random bytes using a given RNG.
+pub fn random_bytes_from_rng<R>(rng: &mut R, len: usize) -> Vec<u8>
+    where R: RngCore + CryptoRng
+{
     let mut buf = Vec::new();
     buf.resize(len, 0);
 
@@ -105,7 +113,28 @@ fn random_bytes(len: usize) -> Result<Vec<u8>> {
 
     let mut res = Vec::new();
     res.extend_from_slice(&buf[..]);
+    res
+}
+
+/// `random_u32` returns a random `u32`.
+#[allow(dead_code)]
+fn random_u32() -> Result<u32> {
+    let mut rng = OsRng::new()
+        .map_err(|e| {
+            let msg = format!("{}", e);
+            let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+            Error::new_io(&msg, source)
+        })?;
+
+    let res = random_u32_from_rng(&mut rng);
     Ok(res)
+}
+
+/// `random_u32_from_rng` returns a random `u32` using a given RNG.
+pub fn random_u32_from_rng<R>(rng: &mut R) -> u32
+    where R: RngCore + CryptoRng
+{
+    rng.next_u32()
 }
 
 /// `extract_bit` extracts a bit from a given `u8`.
