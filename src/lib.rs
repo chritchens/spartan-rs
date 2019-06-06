@@ -322,9 +322,9 @@ fn test_value_bitarray() {
 pub struct Label(BitArray256);
 
 impl Label {
-    /// `new` creates a new `Label`.
-    pub fn new(v: &Value) -> Label {
-        Label::from_value(v)
+    /// `new` creates a new `Label` for a slice of bytes as a SHA256 hash.
+    pub fn new(data: &[u8]) -> Label {
+        Label::from_hash(data)
     }
 
     /// `random` creates a new random `Label`.
@@ -343,16 +343,10 @@ impl Label {
         Ok(label)
     }
 
-    /// `from_value` creates a `Label` from a `Value`.
-    pub fn from_value(v: &Value) -> Label {
-        let buf = v.to_bytes();
-        Label::from_hash(&buf[..])
-    }
-
     /// `from_hash` creates a `Label` from a SHA256 hash of a slice of bytes.
-    pub fn from_hash(buf: &[u8]) -> Label {
+    pub fn from_hash(data: &[u8]) -> Label {
         let mut hash = [0u8; 32];
-        for (i, v) in Sha256::digest(buf).as_slice().iter().enumerate() {
+        for (i, v) in Sha256::digest(data).as_slice().iter().enumerate() {
             hash[i] = *v;
         }
         Label::from_bytes(hash)
@@ -377,23 +371,6 @@ impl Label {
     /// `to_bitarray` converts the `Label` to a `BitArray256`.
     pub fn to_bitarray(&self) -> BitArray256 {
         self.0.clone()
-    }
-}
-
-#[test]
-fn test_label_from_value() {
-    for _ in 0..10 {
-        let value_a = Value::random().unwrap();
-        let value_b = Value::random().unwrap();
-
-        let label_a = Label::from_value(&value_a);
-        let label_b = Label::from_value(&value_b);
-
-        if value_a == value_b {
-            assert_eq!(label_a, label_b);
-        } else {
-            assert!(label_a != label_b);
-        }
     }
 }
 
