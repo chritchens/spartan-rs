@@ -451,8 +451,33 @@ impl Label {
     }
 
     /// `from_node_data` creates a new `Label` from `Node` fields.
-    pub fn from_node_data(_nonce: u32, _op: &Op, _value: Option<Value>) -> Result<Label> {
-        unreachable!()
+    pub fn from_node_data(nonce: u32,
+                          op: &Op,
+                          value: Option<Value>) -> Result<Label>
+    {
+        let mut buf = Vec::new();
+
+        op.validate()?;
+
+        let nonce_buf: [u8; 4] = unsafe {
+            std::mem::transmute::<u32, [u8; 4]>(nonce)
+        };
+
+        let op_buf: Vec<u8> = op.to_bytes()?;
+
+        let value_buf = if let Some(value) = value {
+            value.to_bytes()
+        } else {
+            [0u8; 32]
+        };
+
+        buf.extend_from_slice(&nonce_buf[..]);
+        buf.extend_from_slice(&op_buf);
+        buf.extend_from_slice(&value_buf[..]);
+
+        let label = Label::new(&buf);
+
+        Ok(label)
     }
 }
 
@@ -524,6 +549,18 @@ pub enum Op {
 }
 
 impl Op {
+    /// `ADD_CODE` is the code of the Add `Op`.
+    const ADD_CODE: u8 = 0x0;
+
+    /// `MUL_CODE` is the code of the Mul `Op`.
+    const MUL_CODE: u8 = 0x1;
+
+    /// `IO_CODE` is the code of the IO `Op`.
+    const IO_CODE: u8 = 0x2;
+
+    /// `IDX_CODE` is the code of the Idx `Op`.
+    const IDX_CODE: u8 = 0x3;
+
     /// `new_add` creates a new Add `Op`.
     pub fn new_add(a: &Label, b: &Label, c: &Label) -> Result<Op> {
         if (a == b) || (a == c) || (b == c) {
@@ -560,6 +597,32 @@ impl Op {
         let c = Label::from_rng(rng)?;
 
         Op::new_add(&a, &b, &c)
+    }
+
+    /// `to_add_bytes` converts the Add `Op` to a vector of bytes.
+    pub fn to_add_bytes(&self) -> Result<Vec<u8>> {
+        self.validate()?;
+
+        match self {
+            Op::Add { a, b, c } => {
+                let mut buf = Vec::new();
+
+                let a_buf = a.to_bytes();
+                let b_buf = b.to_bytes();
+                let c_buf = c.to_bytes();
+
+                buf.push(Op::ADD_CODE);
+                buf.extend_from_slice(&a_buf[..]);
+                buf.extend_from_slice(&b_buf[..]);
+                buf.extend_from_slice(&c_buf[..]);
+
+                Ok(buf)
+            },
+            _ => {
+                let err = Error::new_op("invalid op", None);
+                Err(err)
+            }
+        }
     }
 
     /// `new_mul` creates a new Mul `Op`.
@@ -600,6 +663,32 @@ impl Op {
         Op::new_mul(&a, &b, &c)
     }
 
+    /// `to_mul_bytes` converts the Mul `Op` to a vector of bytes.
+    pub fn to_mul_bytes(&self) -> Result<Vec<u8>> {
+        self.validate()?;
+
+        match self {
+            Op::Mul { a, b, c } => {
+                let mut buf = Vec::new();
+
+                let a_buf = a.to_bytes();
+                let b_buf = b.to_bytes();
+                let c_buf = c.to_bytes();
+
+                buf.push(Op::MUL_CODE);
+                buf.extend_from_slice(&a_buf[..]);
+                buf.extend_from_slice(&b_buf[..]);
+                buf.extend_from_slice(&c_buf[..]);
+
+                Ok(buf)
+            },
+            _ => {
+                let err = Error::new_op("invalid op", None);
+                Err(err)
+            }
+        }
+    }
+
     /// `new_io` creates a new IO `Op`.
     pub fn new_io(a: &Label, b: &Label, c: &Label) -> Result<Op> {
         if (a == b) || (a == c) || (b == c) {
@@ -638,6 +727,32 @@ impl Op {
         Op::new_io(&a, &b, &c)
     }
 
+    /// `to_io_bytes` converts the IO `Op` to a vector of bytes.
+    pub fn to_io_bytes(&self) -> Result<Vec<u8>> {
+        self.validate()?;
+
+        match self {
+            Op::IO { a, b, c } => {
+                let mut buf = Vec::new();
+
+                let a_buf = a.to_bytes();
+                let b_buf = b.to_bytes();
+                let c_buf = c.to_bytes();
+
+                buf.push(Op::IO_CODE);
+                buf.extend_from_slice(&a_buf[..]);
+                buf.extend_from_slice(&b_buf[..]);
+                buf.extend_from_slice(&c_buf[..]);
+
+                Ok(buf)
+            },
+            _ => {
+                let err = Error::new_op("invalid op", None);
+                Err(err)
+            }
+        }
+    }
+
     /// `new_idx` creates a new Idx `Op`.
     pub fn new_idx(a: &Label) -> Op {
         Op::Idx { a: Box::new(a.to_owned()) }
@@ -659,6 +774,28 @@ impl Op {
         let op = Op::new_idx(&a);
 
         Ok(op)
+    }
+
+    /// `to_idx_bytes` converts the Idx `Op` to a vector of bytes.
+    pub fn to_idx_bytes(&self) -> Result<Vec<u8>> {
+        self.validate()?;
+
+        match self {
+            Op::Idx { a } => {
+                let mut buf = Vec::new();
+
+                let a_buf = a.to_bytes();
+
+                buf.push(Op::IDX_CODE);
+                buf.extend_from_slice(&a_buf[..]);
+
+                Ok(buf)
+            },
+            _ => {
+                let err = Error::new_op("invalid op", None);
+                Err(err)
+            }
+        }
     }
 
     /// `random` creates a random `Op`.
@@ -690,6 +827,16 @@ impl Op {
             Op::random_io_from_rng(rng)
         } else {
             Op::random_idx_from_rng(rng)
+        }
+    }
+
+    /// `to_bytes` converts the `Op` to a vector of bytes.
+    pub fn to_bytes(&self) -> Result<Vec<u8>> {
+        match self {
+            Op::Add { .. } => self.to_add_bytes(),
+            Op::Mul { .. } => self.to_mul_bytes(),
+            Op::IO { .. } => self.to_io_bytes(),
+            Op::Idx { .. } => self.to_idx_bytes(),
         }
     }
 
