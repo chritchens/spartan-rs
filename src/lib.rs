@@ -414,6 +414,24 @@ fn test_label_bitarray() {
 pub struct Labels<L>(GenericArray<Label, L>)
     where L: ArrayLength<Label>;
 
+impl<L> Index<usize> for Labels<L>
+    where L: ArrayLength<Label>
+{
+    type Output = Label;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.0[index]
+    }
+}
+
+impl<L> IndexMut<usize> for Labels<L>
+    where L: ArrayLength<Label>
+{
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        self.0.index_mut(index)
+    }
+}
+
 /// `Op` is an arithmetic circuit operation.
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub enum Op {
