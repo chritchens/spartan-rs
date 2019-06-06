@@ -104,7 +104,7 @@ fn random_bytes(len: usize) -> Result<Vec<u8>> {
 
 /// `random_bytes_from_rng` creates a vector of random bytes using a given RNG.
 pub fn random_bytes_from_rng<R>(rng: &mut R, len: usize) -> Vec<u8>
-    where R: RngCore + CryptoRng
+    where R: RngCore
 {
     let mut buf = Vec::new();
     buf.resize(len, 0);
@@ -132,7 +132,7 @@ fn random_u32() -> Result<u32> {
 
 /// `random_u32_from_rng` returns a random `u32` using a given RNG.
 pub fn random_u32_from_rng<R>(rng: &mut R) -> u32
-    where R: RngCore + CryptoRng
+    where R: RngCore
 {
     rng.next_u32()
 }
@@ -222,7 +222,7 @@ impl BitArray256 {
 
     /// `from_rng` creates a new random `BitArray256` from a given RNG.
     pub fn from_rng<R>(rng: &mut R) -> Result<BitArray256>
-        where R: RngCore + CryptoRng
+        where R: RngCore
     {
         let mut buf = [0u8; 32];
         rng.try_fill_bytes(&mut buf)
@@ -392,7 +392,7 @@ impl Label {
 
     /// `from_rng` creates a new random `Label` from a given RNG.
     pub fn from_rng<R>(rng: &mut R) -> Result<Label>
-        where R: RngCore + CryptoRng
+        where R: RngCore
     {
         let ba = BitArray256::from_rng(rng)?;
         let label = Label(ba);
