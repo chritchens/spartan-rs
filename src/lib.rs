@@ -16,6 +16,7 @@ use std::ops::{Index, IndexMut};
 pub enum ErrorKind {
     IO,
     Value,
+    Op,
     Other,
 }
 
@@ -53,6 +54,11 @@ impl Error {
         Error::new(ErrorKind::Value, msg, source)
     }
 
+    /// `new_op` creates a new `Error` of type Op.
+    pub fn new_op(msg: &str, source: Option<Box<dyn error::Error + 'static>>) -> Error {
+        Error::new(ErrorKind::Op, msg, source)
+    }
+
     /// `new_other` creates a new `Error` of type Other.
     pub fn new_other(msg: &str, source: Option<Box<dyn error::Error + 'static>>) -> Error {
         Error::new(ErrorKind::Other, msg, source)
@@ -64,6 +70,7 @@ impl fmt::Display for Error {
         match self.kind {
             ErrorKind::IO => write!(f, "IO: {}", self.msg),
             ErrorKind::Value => write!(f, "Value: {}", self.msg),
+            ErrorKind::Op => write!(f, "Op: {}", self.msg),
             ErrorKind::Other => write!(f, "Other: {}", self.msg)
         }
     }
@@ -439,6 +446,86 @@ pub enum Op {
     Mul { a: Box<Label>, b: Box<Label>, c: Box<Label> },
     IO  { a: Box<Label>, b: Box<Label>, c: Box<Label> },
     Idx { a: Box<Label> },
+}
+
+impl Op {
+    /// `new_add` creates a new Add `Op`.
+    pub fn new_add(a: &Label, b: &Label, c: &Label) -> Result<Op> {
+        if (a == b) || (a == c) || (b == c) {
+            let msg = "labels are not distinct";
+            let source = None;
+            let err = Error::new_op(msg, source);
+            return Err(err);
+        }
+
+        let op = Op::Add {
+            a: Box::new(a.to_owned()),
+            b: Box::new(b.to_owned()),
+            c: Box::new(c.to_owned()),
+        };
+
+        Ok(op)
+    }
+
+    /// `new_mul` creates a new Mul `Op`.
+    pub fn new_mul(a: &Label, b: &Label, c: &Label) -> Result<Op> {
+        if (a == b) || (a == c) || (b == c) {
+            let msg = "labels are not distinct";
+            let source = None;
+            let err = Error::new_op(msg, source);
+            return Err(err);
+        }
+
+        let op = Op::Mul {
+            a: Box::new(a.to_owned()),
+            b: Box::new(b.to_owned()),
+            c: Box::new(c.to_owned()),
+        };
+
+        Ok(op)
+    }
+
+    /// `new_io` creates a new IO `Op`.
+    pub fn new_io(a: &Label, b: &Label, c: &Label) -> Result<Op> {
+        if (a == b) || (a == c) || (b == c) {
+            let msg = "labels are not distinct";
+            let source = None;
+            let err = Error::new_op(msg, source);
+            return Err(err);
+        }
+
+        let op = Op::IO {
+            a: Box::new(a.to_owned()),
+            b: Box::new(b.to_owned()),
+            c: Box::new(c.to_owned()),
+        };
+
+        Ok(op)
+    }
+
+    /// `new_idx` creates a new Idx `Op`.
+    pub fn new_idx(a: &Label) -> Op {
+        Op::Idx { a: Box::new(a.to_owned()) }
+    }
+
+    /// `validate` validates an `Op`.
+    pub fn validate(&self) -> Result<()> {
+        match self {
+            Op::Add { a, b, c } |
+            Op::Mul { a, b, c } |
+            Op::IO  { a, b, c } => {
+                if (*a == *b) || (*a == *c) || (*b == *c) {
+                    let msg = "labels are not distinct";
+                    let source = None;
+                    let err = Error::new_op(msg, source);
+                    Err(err)
+                } else {
+                    Ok(())
+                }
+            },
+            _ => Ok(())
+        }
+    }
 }
 
 impl Default for Op {
