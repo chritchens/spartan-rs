@@ -137,6 +137,27 @@ pub fn random_u32_from_rng<R>(rng: &mut R) -> u32
     rng.next_u32()
 }
 
+/// `random_bool` returns a random `bool`.
+#[allow(dead_code)]
+fn random_bool() -> Result<bool> {
+    let mut rng = OsRng::new()
+        .map_err(|e| {
+            let msg = format!("{}", e);
+            let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+            Error::new_io(&msg, source)
+        })?;
+
+    let res = random_bool_from_rng(&mut rng);
+    Ok(res)
+}
+
+/// `random_bool_from_rng` returns a random `bool` using a given RNG.
+pub fn random_bool_from_rng<R>(rng: &mut R) -> bool
+    where R: RngCore
+{
+    rng.next_u32() >= (std::u32::MAX / 2)
+}
+
 /// `extract_bit` extracts a bit from a given `u8`.
 fn extract_bit(n: u8, p: usize) -> bool {
     (1 & (n >> p)) != 0
@@ -521,6 +542,26 @@ impl Op {
         Ok(op)
     }
 
+    /// `random_add` creates a random Add `Op`.
+    pub fn random_add() -> Result<Op> {
+        let a = Label::random()?;
+        let b = Label::random()?;
+        let c = Label::random()?;
+
+        Op::new_add(&a, &b, &c)
+    }
+
+    /// `random_add_from_rng` creates a random Add `Op` from a RNG.
+    pub fn random_add_from_rng<R>(rng: &mut R) -> Result<Op>
+        where R: RngCore
+    {
+        let a = Label::from_rng(rng)?;
+        let b = Label::from_rng(rng)?;
+        let c = Label::from_rng(rng)?;
+
+        Op::new_add(&a, &b, &c)
+    }
+
     /// `new_mul` creates a new Mul `Op`.
     pub fn new_mul(a: &Label, b: &Label, c: &Label) -> Result<Op> {
         if (a == b) || (a == c) || (b == c) {
@@ -537,6 +578,26 @@ impl Op {
         };
 
         Ok(op)
+    }
+
+    /// `random_mul` creates a random Mul `Op`.
+    pub fn random_mul() -> Result<Op> {
+        let a = Label::random()?;
+        let b = Label::random()?;
+        let c = Label::random()?;
+
+        Op::new_mul(&a, &b, &c)
+    }
+
+    /// `random_mul_from_rng` creates a random Mul `Op` from a RNG.
+    pub fn random_mul_from_rng<R>(rng: &mut R) -> Result<Op>
+        where R: RngCore
+    {
+        let a = Label::from_rng(rng)?;
+        let b = Label::from_rng(rng)?;
+        let c = Label::from_rng(rng)?;
+
+        Op::new_mul(&a, &b, &c)
     }
 
     /// `new_io` creates a new IO `Op`.
@@ -557,9 +618,79 @@ impl Op {
         Ok(op)
     }
 
+    /// `random_io` creates a random IO `Op`.
+    pub fn random_io() -> Result<Op> {
+        let a = Label::random()?;
+        let b = Label::random()?;
+        let c = Label::random()?;
+
+        Op::new_io(&a, &b, &c)
+    }
+
+    /// `random_io_from_rng` creates a random IO `Op` from a RNG.
+    pub fn random_io_from_rng<R>(rng: &mut R) -> Result<Op>
+        where R: RngCore
+    {
+        let a = Label::from_rng(rng)?;
+        let b = Label::from_rng(rng)?;
+        let c = Label::from_rng(rng)?;
+
+        Op::new_io(&a, &b, &c)
+    }
+
     /// `new_idx` creates a new Idx `Op`.
     pub fn new_idx(a: &Label) -> Op {
         Op::Idx { a: Box::new(a.to_owned()) }
+    }
+
+    /// `random_idx` creates a random Idx `Op`.
+    pub fn random_idx() -> Result<Op> {
+        let a = Label::random()?;
+        let op = Op::new_idx(&a);
+
+        Ok(op)
+    }
+
+    /// `random_idx_from_rng` creates a random Idx `Op` from a RNG.
+    pub fn random_idx_from_rng<R>(rng: &mut R) -> Result<Op>
+        where R: RngCore
+    {
+        let a = Label::from_rng(rng)?;
+        let op = Op::new_idx(&a);
+
+        Ok(op)
+    }
+
+    /// `random` creates a random `Op`.
+    pub fn random() -> Result<Op> {
+        let idx = random_u32()?;
+
+        if idx >= idx * 3/4 {
+            Op::random_add()
+        } else if idx >= idx / 2 {
+            Op::random_mul()
+        } else if idx >= idx / 4 {
+            Op::random_io()
+        } else {
+            Op::random_idx()
+        }
+    }
+
+    /// `from_rng` creates a random `Op` from a given RNG.
+    pub fn from_rng<R>(rng: &mut R) -> Result<Op>
+        where R: RngCore
+    {
+        let idx = random_u32()?;
+
+        if idx >= idx * 3/4 {
+            Op::random_add_from_rng(rng)
+        } else if idx >= idx / 2 {
+            Op::random_mul_from_rng(rng)
+        } else if idx >= idx / 4 {
+            Op::random_io_from_rng(rng)
+        } else {
+            Op::random_idx_from_rng(rng)
+        }
     }
 
     /// `validate` validates an `Op`.
@@ -628,10 +759,19 @@ impl Node {
     }
 
     /// `from_rng` creates a new random `Node` from a given RNG.
-    pub fn from_rng<R>(_rng: &mut R) -> Result<Node>
+    pub fn from_rng<R>(mut rng: &mut R) -> Result<Node>
         where R: RngCore + CryptoRng
     {
-        unreachable!()
+        let nonce = random_u32()?;
+        let op = Op::from_rng(&mut rng)?;
+        let value = if random_bool()? {
+            let value = Value::from_rng(&mut rng);
+            Some(value)
+        } else {
+            None
+        };
+
+        Node::new(nonce, &op, value)
     }
 
 
