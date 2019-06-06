@@ -17,6 +17,7 @@ pub enum ErrorKind {
     IO,
     Value,
     Op,
+    Node,
     Other,
 }
 
@@ -59,6 +60,11 @@ impl Error {
         Error::new(ErrorKind::Op, msg, source)
     }
 
+    /// `new_node` creates a new `Error` of type Label.
+    pub fn new_node(msg: &str, source: Option<Box<dyn error::Error + 'static>>) -> Error {
+        Error::new(ErrorKind::Node, msg, source)
+    }
+
     /// `new_other` creates a new `Error` of type Other.
     pub fn new_other(msg: &str, source: Option<Box<dyn error::Error + 'static>>) -> Error {
         Error::new(ErrorKind::Other, msg, source)
@@ -71,6 +77,7 @@ impl fmt::Display for Error {
             ErrorKind::IO => write!(f, "IO: {}", self.msg),
             ErrorKind::Value => write!(f, "Value: {}", self.msg),
             ErrorKind::Op => write!(f, "Op: {}", self.msg),
+            ErrorKind::Node => write!(f, "Op: {}", self.msg),
             ErrorKind::Other => write!(f, "Other: {}", self.msg)
         }
     }
@@ -392,6 +399,11 @@ impl Label {
     pub fn to_bitarray(&self) -> BitArray256 {
         self.0.clone()
     }
+
+    /// `from_node_data` creates a new `Label` from `Node` fields.
+    pub fn from_node_data(_nonce: u32, _op: &Op, _value: Option<Value>) -> Result<Label> {
+        unreachable!()
+    }
 }
 
 #[test]
@@ -551,9 +563,63 @@ impl Default for Op {
 /// q = 2^255 -19.
 #[derive(Clone, Default, Eq, PartialEq, Debug)]
 pub struct Node {
-    pub label: Label,
+    label: Label,
+    pub nonce: u32,
     pub op: Op,
     pub value: Option<Value>,
+}
+
+impl Node {
+    /// `new` creates a new `Node`.
+    pub fn new(nonce: u32, op: &Op, value: Option<Value>) -> Result<Node> {
+        op.validate()?;
+
+        let label = Label::from_node_data(nonce, op, value)?;
+
+        let node = Node {
+            label,
+            nonce,
+            op: op.to_owned(),
+            value,
+        };
+
+        Ok(node)
+    }
+
+    /// `random` creates a new random `Node`.
+    pub fn random() -> Result<Node> {
+        let mut rng = OsRng::new()
+            .map_err(|e| {
+                let msg = format!("{}", e);
+                let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+                Error::new_io(&msg, source)
+            })?;
+
+        Node::from_rng(&mut rng)
+    }
+
+    /// `from_rng` creates a new random `Node` from a given RNG.
+    pub fn from_rng<R>(_rng: &mut R) -> Result<Node>
+        where R: RngCore + CryptoRng
+    {
+        unreachable!()
+    }
+
+
+    /// `validate` validates the `Node`.
+    pub fn validate(&self) -> Result<()> {
+        self.op.validate()?;
+
+        let label = Label::from_node_data(self.nonce, &self.op, self.value)?;
+        if label != self.label {
+            let msg = "invalid label";
+            let source = None;
+            let err = Error::new_node(msg, source);
+            Err(err)
+        } else {
+            Ok(())
+        }
+    }
 }
 
 /// `Circuit` is an arithmetic circuit in the field of order q = 2^255 -19.
