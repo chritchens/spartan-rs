@@ -81,6 +81,26 @@ impl fmt::Display for Error {
 /// the library Error type.
 pub type Result<T> = result::Result<T, Error>;
 
+/// `random_bytes` creates a vector of random bytes.
+#[allow(dead_code)]
+fn random_bytes(len: usize) -> Result<Vec<u8>> {
+    let mut rng = OsRng::new()
+        .map_err(|e| {
+            let msg = format!("{}", e);
+            let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+            Error::new_io(&msg, source)
+        })?;
+
+    let mut buf = Vec::new();
+    buf.resize(len, 0);
+
+    rng.fill_bytes(&mut buf);
+
+    let mut res = Vec::new();
+    res.extend_from_slice(&buf[..]);
+    Ok(res)
+}
+
 /// `extract_bit` extracts a bit from a given `u8`.
 fn extract_bit(n: u8, p: usize) -> bool {
     (1 & (n >> p)) != 0
@@ -371,6 +391,22 @@ impl Label {
     /// `to_bitarray` converts the `Label` to a `BitArray256`.
     pub fn to_bitarray(&self) -> BitArray256 {
         self.0.clone()
+    }
+}
+
+#[test]
+fn test_label_new() {
+    for _ in 0..10 {
+        let buf_a = random_bytes(32).unwrap();
+        let buf_b = random_bytes(32).unwrap();
+        let label_a = Label::new(&buf_a);
+        let label_b = Label::new(&buf_b);
+
+        if buf_a != buf_b {
+            assert!(label_a != label_b)
+        } else {
+            assert_eq!(label_a, label_b)
+        }
     }
 }
 
