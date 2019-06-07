@@ -946,14 +946,13 @@ impl Node {
 
 /// `Circuit` is an arithmetic circuit in the field of order q = 2^255 -19.
 #[derive(Clone, Default, Debug)]
-pub struct Circuit<P, Q, R>
-    where P: ArrayLength<Label>,
-          Q: ArrayLength<Label>,
-          R: ArrayLength<Label>,
-{
-    pub public_inputs: Labels<P>,
-    pub nondet_inputs: Labels<Q>,
-    pub public_outputs: Labels<R>,
+pub struct Circuit {
+    pub public_inputs: Vec<Label>,
+    public_inputs_length: u32,
+    pub nondet_inputs: Vec<Label>,
+    nondet_inputs_length: u32,
+    pub public_outputs: Vec<Label>,
+    public_outputs_length: u32,
     nodes: HashMap<Label, Node>,
-    length: u32,
+    nodes_length: u32,
 }
