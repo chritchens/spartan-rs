@@ -947,7 +947,6 @@ impl Circuit {
     /// `new` creates a new `Circuit`.
     pub fn new() -> Result<Circuit> {
         let mut circuit = Circuit::default();
-
         circuit.id = circuit.calc_id()?;
 
         Ok(circuit)
@@ -955,7 +954,14 @@ impl Circuit {
 
     /// `calc_id` calculates the `Circuit` id.
     pub fn calc_id(&self) -> Result<[u8; 32]> {
-        unreachable!() // TODO
+        let buf = self.to_bytes()?;
+        let mut id = [0u8; 32];
+
+        for (i, v) in Sha256::digest(&buf).iter().enumerate() {
+            id[i] = *v;
+        }
+
+        Ok(id)
     }
 
     /// `to_bytes` converts the `Circuit` to a vector of bytes.
