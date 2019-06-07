@@ -5,8 +5,6 @@ authors = ["chritchens <chritchens@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-serde = "~1.0"
-serde_derive = "~1.0"
 rand_core = "~0.3"
 rand_os = "~0.1"
 typenum = "~1.10"
