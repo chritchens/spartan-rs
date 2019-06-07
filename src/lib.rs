@@ -935,3 +935,30 @@ pub struct Circuit {
     nodes: HashMap<Label, Node>,
     nodes_length: u32,
 }
+
+impl Circuit {
+    /// `new` creates a new `Circuit`.
+    pub fn new() -> Result<Circuit> {
+        unreachable!()
+    }
+
+    /// `calc_id` calculates the `Circuit` id.
+    pub fn calc_id(&self) -> Result<[u8; 32]> {
+        unreachable!()
+    }
+
+    /// `to_bytes` converts the `Circuit` to a vector of bytes.
+    pub fn to_bytes(&self) -> Result<Vec<u8>> {
+        unreachable!()
+    }
+
+    /// `from_bytes` creates a new `Circuit` from a slice of bytes.
+    pub fn from_bytes(_buf: &[u8]) -> Result<Circuit> {
+        unreachable!()
+    }
+
+    /// `validate` validates the `Circuit`.
+    pub fn validate(&self) -> Result<()> {
+        unreachable!()
+    }
+}
