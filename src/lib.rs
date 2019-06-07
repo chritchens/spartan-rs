@@ -925,6 +925,7 @@ impl Node {
 /// `Circuit` is an arithmetic circuit in the field of order q = 2^255 -19.
 #[derive(Clone, Default, Debug)]
 pub struct Circuit {
+    pub id: [u8; 32],
     pub public_inputs: Vec<Label>,
     public_inputs_length: u32,
     pub nondet_inputs: Vec<Label>,
