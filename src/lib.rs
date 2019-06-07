@@ -395,6 +395,12 @@ fn test_value_bitarray() {
 }
 
 /// `Label` is a label of a node in the circuit.
+/// NB: In the original version label is a bitarray of length l = log|C|,
+/// where C is the arithmetic circuit and |C| is the length of the circuit.
+/// Here instead is a fixed length of 32 bytes, the length of the output of SHA256.
+/// Was it necessary to use a cryptographic hash in this context? Not per se, but
+/// it would be needed in certain cases (eg: this kind of data is shared and retained
+/// in some networked system).
 #[derive(Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
 pub struct Label(BitArray256);
 
