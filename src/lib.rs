@@ -18,6 +18,7 @@ pub enum ErrorKind {
     Value,
     Op,
     Node,
+    Circuit,
     Other,
 }
 
@@ -65,6 +66,11 @@ impl Error {
         Error::new(ErrorKind::Node, msg, source)
     }
 
+    /// `new_circuit` creates a new `Error` of type Circuit.
+    pub fn new_circuit(msg: &str, source: Option<Box<dyn error::Error + 'static>>) -> Error {
+        Error::new(ErrorKind::Node, msg, source)
+    }
+
     /// `new_other` creates a new `Error` of type Other.
     pub fn new_other(msg: &str, source: Option<Box<dyn error::Error + 'static>>) -> Error {
         Error::new(ErrorKind::Other, msg, source)
@@ -78,6 +84,7 @@ impl fmt::Display for Error {
             ErrorKind::Value => write!(f, "Value: {}", self.msg),
             ErrorKind::Op => write!(f, "Op: {}", self.msg),
             ErrorKind::Node => write!(f, "Op: {}", self.msg),
+            ErrorKind::Circuit => write!(f, "Op: {}", self.msg),
             ErrorKind::Other => write!(f, "Other: {}", self.msg)
         }
     }
@@ -927,38 +934,76 @@ impl Node {
 pub struct Circuit {
     pub id: [u8; 32],
     pub public_inputs: Vec<Label>,
-    public_inputs_length: u32,
+    public_inputs_len: u32,
     pub nondet_inputs: Vec<Label>,
-    nondet_inputs_length: u32,
+    nondet_inputs_len: u32,
     pub public_outputs: Vec<Label>,
-    public_outputs_length: u32,
+    public_outputs_len: u32,
     nodes: HashMap<Label, Node>,
-    nodes_length: u32,
+    nodes_len: u32,
 }
 
 impl Circuit {
     /// `new` creates a new `Circuit`.
     pub fn new() -> Result<Circuit> {
-        unreachable!()
+        let mut circuit = Circuit::default();
+
+        circuit.id = circuit.calc_id()?;
+
+        Ok(circuit)
     }
 
     /// `calc_id` calculates the `Circuit` id.
     pub fn calc_id(&self) -> Result<[u8; 32]> {
-        unreachable!()
+        unreachable!() // TODO
     }
 
     /// `to_bytes` converts the `Circuit` to a vector of bytes.
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
-        unreachable!()
+        unreachable!() // TODO
     }
 
     /// `from_bytes` creates a new `Circuit` from a slice of bytes.
     pub fn from_bytes(_buf: &[u8]) -> Result<Circuit> {
-        unreachable!()
+        unreachable!() // TODO
     }
 
     /// `validate` validates the `Circuit`.
     pub fn validate(&self) -> Result<()> {
-        unreachable!()
+        if self.public_inputs.len() != self.public_inputs_len as usize {
+            let err = Error::new_circuit("invalid length", None);
+            return Err(err);
+        }
+
+        if self.nondet_inputs.len() != self.nondet_inputs_len as usize {
+            let err = Error::new_circuit("invalid length", None);
+            return Err(err);
+        }
+
+        if self.public_outputs.len() != self.public_outputs_len as usize {
+            let err = Error::new_circuit("invalid length", None);
+            return Err(err);
+        }
+
+        if self.nodes.len() != self.nodes_len as usize {
+            let err = Error::new_circuit("invalid length", None);
+            return Err(err);
+        }
+
+        for (label, node) in self.nodes.iter() {
+            node.validate()?;
+
+            if label != &node.label {
+                let err = Error::new_circuit("invalid nodes", None);
+                return Err(err);
+            }
+        }
+
+        if self.id != self.calc_id()? {
+            let err = Error::new_circuit("invalid id", None);
+            return Err(err);
+        }
+
+        Ok(())
     }
 }
