@@ -590,8 +590,8 @@ impl Op {
         Op::new_add(&a, &b, &c)
     }
 
-    /// `to_add_bytes` converts the Add `Op` to a vector of bytes.
-    pub fn to_add_bytes(&self) -> Result<Vec<u8>> {
+    /// `add_to_bytes` converts the Add `Op` to a vector of bytes.
+    pub fn add_to_bytes(&self) -> Result<Vec<u8>> {
         self.validate()?;
 
         match self {
@@ -616,9 +616,40 @@ impl Op {
         }
     }
 
-    /// `from_add_bytes` creates an Add `Op` from a slice of bytes.
-    pub fn from_add_bytes(buf: &[u8]) -> Result<Op> {
-        unreachable!()
+    /// `add_from_bytes` creates an Add `Op` from a slice of bytes.
+    pub fn add_from_bytes(buf: &[u8]) -> Result<Op> {
+        if buf.len() != 97 {
+            let err = Error::new_op("invalid op length", None);
+            return Err(err);
+        }
+
+        if buf[0] != Op::ADD_CODE {
+            let err = Error::new_op("invalid op code", None);
+            return Err(err);
+        }
+
+        let mut a_buf = [0u8; 32];
+        for (i, v) in buf[1..33].iter().enumerate() {
+            a_buf[i] = *v;
+        }
+
+        let a = Label::from_bytes(a_buf);
+
+        let mut b_buf = [0u8; 32];
+        for (i, v) in buf[33..65].iter().enumerate() {
+            b_buf[i] = *v;
+        }
+
+        let b = Label::from_bytes(b_buf);
+
+        let mut c_buf = [0u8; 32];
+        for (i, v) in buf[65..97].iter().enumerate() {
+            c_buf[i] = *v;
+        }
+
+        let c = Label::from_bytes(c_buf);
+
+        Op::new_add(&a, &b, &c)
     }
 
     /// `new_mul` creates a new Mul `Op`.
@@ -659,8 +690,8 @@ impl Op {
         Op::new_mul(&a, &b, &c)
     }
 
-    /// `to_mul_bytes` converts the Mul `Op` to a vector of bytes.
-    pub fn to_mul_bytes(&self) -> Result<Vec<u8>> {
+    /// `mul_to_bytes` converts the Mul `Op` to a vector of bytes.
+    pub fn mul_to_bytes(&self) -> Result<Vec<u8>> {
         self.validate()?;
 
         match self {
@@ -685,9 +716,40 @@ impl Op {
         }
     }
 
-    /// `from_mul_bytes` creates an Mul `Op` from a slice of bytes.
-    pub fn from_mul_bytes(buf: &[u8]) -> Result<Op> {
-        unreachable!()
+    /// `mul_from_bytes` creates an Mul `Op` from a slice of bytes.
+    pub fn mul_from_bytes(buf: &[u8]) -> Result<Op> {
+        if buf.len() != 97 {
+            let err = Error::new_op("invalid op length", None);
+            return Err(err);
+        }
+
+        if buf[0] != Op::MUL_CODE {
+            let err = Error::new_op("invalid op code", None);
+            return Err(err);
+        }
+
+        let mut a_buf = [0u8; 32];
+        for (i, v) in buf[1..33].iter().enumerate() {
+            a_buf[i] = *v;
+        }
+
+        let a = Label::from_bytes(a_buf);
+
+        let mut b_buf = [0u8; 32];
+        for (i, v) in buf[33..65].iter().enumerate() {
+            b_buf[i] = *v;
+        }
+
+        let b = Label::from_bytes(b_buf);
+
+        let mut c_buf = [0u8; 32];
+        for (i, v) in buf[65..97].iter().enumerate() {
+            c_buf[i] = *v;
+        }
+
+        let c = Label::from_bytes(c_buf);
+
+        Op::new_mul(&a, &b, &c)
     }
 
     /// `new_io` creates a new Io `Op`.
@@ -728,8 +790,8 @@ impl Op {
         Op::new_io(&a, &b, &c)
     }
 
-    /// `to_io_bytes` converts the Io `Op` to a vector of bytes.
-    pub fn to_io_bytes(&self) -> Result<Vec<u8>> {
+    /// `io_to_bytes` converts the Io `Op` to a vector of bytes.
+    pub fn io_to_bytes(&self) -> Result<Vec<u8>> {
         self.validate()?;
 
         match self {
@@ -754,9 +816,40 @@ impl Op {
         }
     }
 
-    /// `from_io_bytes` creates an Io `Op` from a slice of bytes.
-    pub fn from_io_bytes(buf: &[u8]) -> Result<Op> {
-        unreachable!()
+    /// `io_from_bytes` creates an Io `Op` from a slice of bytes.
+    pub fn io_from_bytes(buf: &[u8]) -> Result<Op> {
+        if buf.len() != 97 {
+            let err = Error::new_op("invalid op length", None);
+            return Err(err);
+        }
+
+        if buf[0] != Op::IO_CODE {
+            let err = Error::new_op("invalid op code", None);
+            return Err(err);
+        }
+
+        let mut a_buf = [0u8; 32];
+        for (i, v) in buf[1..33].iter().enumerate() {
+            a_buf[i] = *v;
+        }
+
+        let a = Label::from_bytes(a_buf);
+
+        let mut b_buf = [0u8; 32];
+        for (i, v) in buf[33..65].iter().enumerate() {
+            b_buf[i] = *v;
+        }
+
+        let b = Label::from_bytes(b_buf);
+
+        let mut c_buf = [0u8; 32];
+        for (i, v) in buf[65..97].iter().enumerate() {
+            c_buf[i] = *v;
+        }
+
+        let c = Label::from_bytes(c_buf);
+
+        Op::new_io(&a, &b, &c)
     }
 
     /// `new_idx` creates a new Idx `Op`.
@@ -782,8 +875,8 @@ impl Op {
         Ok(op)
     }
 
-    /// `to_idx_bytes` converts the Idx `Op` to a vector of bytes.
-    pub fn to_idx_bytes(&self) -> Result<Vec<u8>> {
+    /// `idx_to_bytes` converts the Idx `Op` to a vector of bytes.
+    pub fn idx_to_bytes(&self) -> Result<Vec<u8>> {
         self.validate()?;
 
         match self {
@@ -804,9 +897,27 @@ impl Op {
         }
     }
 
-    /// `from_idx_bytes` creates an Idx `Op` from a slice of bytes.
-    pub fn from_idx_bytes(buf: &[u8]) -> Result<Op> {
-        unreachable!()
+    /// `idx_from_bytes` creates an Idx `Op` from a slice of bytes.
+    pub fn idx_from_bytes(buf: &[u8]) -> Result<Op> {
+        if buf.len() != 33 {
+            let err = Error::new_op("invalid op length", None);
+            return Err(err);
+        }
+
+        if buf[0] != Op::IDX_CODE {
+            let err = Error::new_op("invalid op code", None);
+            return Err(err);
+        }
+
+        let mut a_buf = [0u8; 32];
+        for (i, v) in buf[1..].iter().enumerate() {
+            a_buf[i] = *v;
+        }
+
+        let a = Label::from_bytes(a_buf);
+        let op = Op::new_idx(&a);
+
+        Ok(op)
     }
 
     /// `random` creates a random `Op`.
@@ -844,16 +955,30 @@ impl Op {
     /// `to_bytes` converts the `Op` to a vector of bytes.
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
         match self {
-            Op::Add { .. } => self.to_add_bytes(),
-            Op::Mul { .. } => self.to_mul_bytes(),
-            Op::Io { .. } => self.to_io_bytes(),
-            Op::Idx { .. } => self.to_idx_bytes(),
+            Op::Add { .. } => self.add_to_bytes(),
+            Op::Mul { .. } => self.mul_to_bytes(),
+            Op::Io { .. } => self.io_to_bytes(),
+            Op::Idx { .. } => self.idx_to_bytes(),
         }
     }
 
     /// `from_bytes` creates an `Op` from a slice of bytes.
     pub fn from_bytes(buf: &[u8]) -> Result<Op> {
-        unreachable!()
+        if buf.len() > 97 {
+            let err = Error::new_op("invalid op length", None);
+            return Err(err);
+        }
+
+        match buf[0] {
+            Op::ADD_CODE => Op::add_from_bytes(buf),
+            Op::MUL_CODE => Op::mul_from_bytes(buf),
+            Op::IO_CODE => Op::io_from_bytes(buf),
+            Op::IDX_CODE => Op::idx_from_bytes(buf),
+            _ => {
+                let err = Error::new_op("invalid op code", None);
+                Err(err)
+            }
+        }
     }
 
     /// `validate` validates an `Op`.
@@ -924,6 +1049,22 @@ fn test_op_random_add() {
 }
 
 #[test]
+fn test_op_add_bytes() {
+    for _ in 0..10 {
+        let op_a = Op::random_add().unwrap();
+        let res = op_a.to_bytes();
+        assert!(res.is_ok());
+
+        let buf = res.unwrap();
+        let res = Op::add_from_bytes(&buf);
+        assert!(res.is_ok());
+
+        let op_b = res.unwrap();
+        assert_eq!(op_a, op_b);
+    }
+}
+
+#[test]
 fn test_op_new_mul() {
     for _ in 0..10 {
         let a = Label::random().unwrap();
@@ -961,6 +1102,22 @@ fn test_op_random_mul() {
         let op = Op::random_mul().unwrap();
         let res = op.validate();
         assert!(res.is_ok());
+    }
+}
+
+#[test]
+fn test_op_mul_bytes() {
+    for _ in 0..10 {
+        let op_a = Op::random_mul().unwrap();
+        let res = op_a.to_bytes();
+        assert!(res.is_ok());
+
+        let buf = res.unwrap();
+        let res = Op::mul_from_bytes(&buf);
+        assert!(res.is_ok());
+
+        let op_b = res.unwrap();
+        assert_eq!(op_a, op_b);
     }
 }
 
@@ -1006,11 +1163,93 @@ fn test_op_random_io() {
 }
 
 #[test]
+fn test_op_io_bytes() {
+    for _ in 0..10 {
+        let op_a = Op::random_io().unwrap();
+        let res = op_a.to_bytes();
+        assert!(res.is_ok());
+
+        let buf = res.unwrap();
+        let res = Op::io_from_bytes(&buf);
+        //assert!(res.is_ok());
+
+        let op_b = res.unwrap();
+        assert_eq!(op_a, op_b);
+    }
+}
+
+#[test]
 fn test_op_random_idx() {
     for _ in 0..10 {
         let op = Op::random_idx().unwrap();
         let res = op.validate();
         assert!(res.is_ok());
+    }
+}
+
+#[test]
+fn test_op_idx_bytes() {
+    for _ in 0..10 {
+        let op_a = Op::random_idx().unwrap();
+        let res = op_a.to_bytes();
+        assert!(res.is_ok());
+
+        let buf = res.unwrap();
+        let res = Op::idx_from_bytes(&buf);
+        assert!(res.is_ok());
+
+        let op_b = res.unwrap();
+        assert_eq!(op_a, op_b);
+    }
+}
+
+#[test]
+fn test_op_bytes() {
+    for _ in 0..10 {
+        let add_a = Op::random_add().unwrap();
+        let mul_a = Op::random_mul().unwrap();
+        let io_a = Op::random_io().unwrap();
+        let idx_a = Op::random_idx().unwrap();
+
+        let res = add_a.to_bytes();
+        assert!(res.is_ok());
+
+        let add_buf = res.unwrap();
+        let res = Op::from_bytes(&add_buf);
+        assert!(res.is_ok());
+
+        let add_b = res.unwrap();
+        assert_eq!(add_a, add_b);
+
+        let res = mul_a.to_bytes();
+        assert!(res.is_ok());
+
+        let mul_buf = res.unwrap();
+        let res = Op::from_bytes(&mul_buf);
+        assert!(res.is_ok());
+
+        let mul_b = res.unwrap();
+        assert_eq!(mul_a, mul_b);
+
+        let res = io_a.to_bytes();
+        assert!(res.is_ok());
+
+        let io_buf = res.unwrap();
+        let res = Op::from_bytes(&io_buf);
+        assert!(res.is_ok());
+
+        let io_b = res.unwrap();
+        assert_eq!(io_a, io_b);
+
+        let res = idx_a.to_bytes();
+        assert!(res.is_ok());
+
+        let idx_buf = res.unwrap();
+        let res = Op::from_bytes(&idx_buf);
+        assert!(res.is_ok());
+
+        let idx_b = res.unwrap();
+        assert_eq!(idx_a, idx_b);
     }
 }
 
