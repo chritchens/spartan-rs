@@ -1006,6 +1006,15 @@ fn test_op_random_io() {
 }
 
 #[test]
+fn test_op_random_idx() {
+    for _ in 0..10 {
+        let op = Op::random_idx().unwrap();
+        let res = op.validate();
+        assert!(res.is_ok());
+    }
+}
+
+#[test]
 fn test_op_validate() {
     for _ in 0..10 {
         let valid_add = Op::random_add().unwrap();
