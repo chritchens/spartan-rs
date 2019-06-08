@@ -1034,6 +1034,7 @@ fn test_op_new_add() {
             b: Box::new(b.clone()),
             c: Box::new(b.clone()),
         };
+
         let res = invalid_op.validate();
         assert!(res.is_err());
     }
@@ -1061,6 +1062,32 @@ fn test_op_add_bytes() {
 
         let op_b = res.unwrap();
         assert_eq!(op_a, op_b);
+
+        let invalid_length_buf = [0u8; 98];
+        let res = Op::add_from_bytes(&invalid_length_buf[..]);
+        assert!(res.is_err());
+
+        match res {
+            Err(err) => {
+                let msg: String = "invalid op length".into();
+                assert_eq!(err.msg, msg)
+            },
+            _ => panic!("expected 'invalid op length'"),
+        }
+
+        let mut invalid_code_buf = [0u8; 97];
+        invalid_code_buf[0] = Op::ADD_CODE+1;
+        let res = Op::add_from_bytes(&invalid_code_buf[..]);
+        assert!(res.is_err());
+
+        match res {
+            Err(err) => {
+                let msg: String = "invalid op code".into();
+                assert_eq!(err.msg, msg)
+            },
+            _ => panic!("expected 'invalid op code'"),
+        }
+
     }
 }
 
@@ -1091,6 +1118,7 @@ fn test_op_new_mul() {
             b: Box::new(b.clone()),
             c: Box::new(b.clone()),
         };
+
         let res = invalid_op.validate();
         assert!(res.is_err());
     }
@@ -1118,6 +1146,31 @@ fn test_op_mul_bytes() {
 
         let op_b = res.unwrap();
         assert_eq!(op_a, op_b);
+
+        let invalid_length_buf = [0u8; 98];
+        let res = Op::mul_from_bytes(&invalid_length_buf[..]);
+        assert!(res.is_err());
+
+        match res {
+            Err(err) => {
+                let msg: String = "invalid op length".into();
+                assert_eq!(err.msg, msg)
+            },
+            _ => panic!("expected 'invalid op length'"),
+        }
+
+        let mut invalid_code_buf = [0u8; 97];
+        invalid_code_buf[0] = Op::MUL_CODE+1;
+        let res = Op::mul_from_bytes(&invalid_code_buf[..]);
+        assert!(res.is_err());
+
+        match res {
+            Err(err) => {
+                let msg: String = "invalid op code".into();
+                assert_eq!(err.msg, msg)
+            },
+            _ => panic!("expected 'invalid op code'"),
+        }
     }
 }
 
@@ -1171,10 +1224,35 @@ fn test_op_io_bytes() {
 
         let buf = res.unwrap();
         let res = Op::io_from_bytes(&buf);
-        //assert!(res.is_ok());
+        assert!(res.is_ok());
 
         let op_b = res.unwrap();
         assert_eq!(op_a, op_b);
+
+        let invalid_length_buf = [0u8; 98];
+        let res = Op::io_from_bytes(&invalid_length_buf[..]);
+        assert!(res.is_err());
+
+        match res {
+            Err(err) => {
+                let msg: String = "invalid op length".into();
+                assert_eq!(err.msg, msg)
+            },
+            _ => panic!("expected 'invalid op length'"),
+        }
+
+        let mut invalid_code_buf = [0u8; 97];
+        invalid_code_buf[0] = Op::IO_CODE+1;
+        let res = Op::io_from_bytes(&invalid_code_buf[..]);
+        assert!(res.is_err());
+
+        match res {
+            Err(err) => {
+                let msg: String = "invalid op code".into();
+                assert_eq!(err.msg, msg)
+            },
+            _ => panic!("expected 'invalid op code'"),
+        }
     }
 }
 
@@ -1200,6 +1278,31 @@ fn test_op_idx_bytes() {
 
         let op_b = res.unwrap();
         assert_eq!(op_a, op_b);
+
+        let invalid_length_buf = [0u8; 34];
+        let res = Op::idx_from_bytes(&invalid_length_buf[..]);
+        assert!(res.is_err());
+
+        match res {
+            Err(err) => {
+                let msg: String = "invalid op length".into();
+                assert_eq!(err.msg, msg)
+            },
+            _ => panic!("expected 'invalid op length'"),
+        }
+
+        let mut invalid_code_buf = [0u8; 33];
+        invalid_code_buf[0] = Op::IDX_CODE+1;
+        let res = Op::idx_from_bytes(&invalid_code_buf[..]);
+        assert!(res.is_err());
+
+        match res {
+            Err(err) => {
+                let msg: String = "invalid op code".into();
+                assert_eq!(err.msg, msg)
+            },
+            _ => panic!("expected 'invalid op code'"),
+        }
     }
 }
 
@@ -1210,6 +1313,31 @@ fn test_op_bytes() {
         let mul_a = Op::random_mul().unwrap();
         let io_a = Op::random_io().unwrap();
         let idx_a = Op::random_idx().unwrap();
+
+        let invalid_length_buf = [0u8; 98];
+        let res = Op::from_bytes(&invalid_length_buf[..]);
+        assert!(res.is_err());
+
+        match res {
+            Err(err) => {
+                let msg: String = "invalid op length".into();
+                assert_eq!(err.msg, msg)
+            },
+            _ => panic!("expected 'invalid op length'"),
+        }
+
+        let mut invalid_code_buf = [0u8; 97];
+        invalid_code_buf[0] = 255;
+        let res = Op::from_bytes(&invalid_code_buf[..]);
+        assert!(res.is_err());
+
+        match res {
+            Err(err) => {
+                let msg: String = "invalid op code".into();
+                assert_eq!(err.msg, msg)
+            },
+            _ => panic!("expected 'invalid op code'"),
+        }
 
         let res = add_a.to_bytes();
         assert!(res.is_ok());
