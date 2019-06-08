@@ -924,7 +924,7 @@ impl Op {
     pub fn random() -> Result<Op> {
         let idx = random_u32()?;
 
-        if idx >= idx * 3/4 {
+        if idx >= (idx / 4) * 3 {
             Op::random_add()
         } else if idx >= idx / 2 {
             Op::random_mul()
@@ -941,7 +941,7 @@ impl Op {
     {
         let idx = random_u32()?;
 
-        if idx >= idx * 3/4 {
+        if idx >= (idx / 4) * 3 {
             Op::random_add_from_rng(rng)
         } else if idx >= idx / 2 {
             Op::random_mul_from_rng(rng)
@@ -1505,6 +1505,84 @@ impl Node {
         } else {
             Ok(())
         }
+    }
+}
+
+#[test]
+fn test_node_new() {
+    for _ in 0..10 {
+        let nonce = random_u32().unwrap();
+        let valid_op = Op::random().unwrap();
+        let source = if random_bool().unwrap() {
+            let value = Value::random().unwrap();
+            Some(value)
+        } else {
+            None
+        };
+
+        let res = Node::new(nonce, &valid_op, source.clone());
+        assert!(res.is_ok());
+
+        let node = res.unwrap();
+        let res = node.validate();
+        assert!(res.is_ok());
+
+        let label = Label::random().unwrap();
+
+        let invalid_op = Op::Mul {
+            a: Box::new(label.clone()),
+            b: Box::new(label.clone()),
+            c: Box::new(label),
+        };
+
+        let res = Node::new(nonce, &invalid_op, source);
+        assert!(res.is_err());
+    }
+}
+
+#[test]
+fn test_node_random() {
+    for _ in 0..10 {
+        let res = Node::random();
+        assert!(res.is_ok());
+
+        let node = res.unwrap();
+        let res = node.validate();
+        assert!(res.is_ok())
+    }
+}
+
+#[test]
+fn test_node_validate() {
+    for _ in 0..10 {
+        let res = Node::random();
+        assert!(res.is_ok());
+
+        let node = res.unwrap();
+        let res = node.validate();
+        assert!(res.is_ok());
+
+        let label = Label::random().unwrap();
+
+        let invalid_op = Op::Mul {
+            a: Box::new(label.clone()),
+            b: Box::new(label.clone()),
+            c: Box::new(label),
+        };
+
+        let mut invalid_op_node = node.clone();
+        invalid_op_node.op = invalid_op;
+        let res = invalid_op_node.validate();
+        assert!(res.is_err());
+
+        let mut invalid_label_node = node.clone();
+        let mut invalid_label = Label::random().unwrap();
+        while invalid_label == node.label {
+            invalid_label = Label::random().unwrap();
+        }
+        invalid_label_node.label = invalid_label;
+        let res = invalid_label_node.validate();
+        assert!(res.is_err());
     }
 }
 
