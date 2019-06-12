@@ -1511,6 +1511,58 @@ impl Node {
         Node::new(nonce, &op, value)
     }
 
+    /// `to_bytes` converts the `Node` to a vector of bytes.
+    pub fn to_bytes(&self) -> Result<Vec<u8>> {
+        let mut buf = Vec::new();
+
+        buf.extend_from_slice(&self.label.to_bytes()[..]);
+        // TODO: write nonce (u32)
+        // TODO: write op len
+        buf.extend_from_slice(&self.op.to_bytes()?[..]);
+
+        if let Some(value) = self.value {
+            // TODO: write 1u32
+            buf.extend_from_slice(&value.to_bytes()[..]);
+        } else {
+            // TODO: write 0u32
+        }
+
+        Ok(buf)
+    }
+
+    /// `from_bytes` creates a new `Node` from a slice of bytes.
+    pub fn from_bytes(_buf: &[u8]) -> Result<Node> {
+        let label_buf = [0u8; 32]; // TODO
+        let label = Label::from_bytes(label_buf);
+
+        let nonce = 0u32; // TODO
+
+        let op_buf = Vec::new(); // TODO
+        let op = Op::from_bytes(&op_buf)?;
+
+        let value_flag = 0; // TODO
+        let mut value = None;
+
+        if value_flag == 1 {
+            let value_buf = [0u8; 32]; // TODO
+            value = Some(Value::from_bytes(value_buf)?);
+        } else if value_flag != 0 {
+            let err = Error::new_node("invalid value", None);
+            return Err(err);
+        }
+
+        let node = Node {
+            label,
+            nonce,
+            op,
+            value,
+        };
+
+        node.validate()?;
+
+        Ok(node)
+    }
+
     /// `validate` validates the `Node`.
     pub fn validate(&self) -> Result<()> {
         self.op.validate()?;
@@ -1609,14 +1661,14 @@ fn test_node_validate() {
 #[derive(Clone, Default, Debug)]
 pub struct Circuit {
     pub id: [u8; 32],
-    pub public_inputs: Vec<Label>,
     public_inputs_len: u32,
-    pub nondet_inputs: Vec<Label>,
+    pub public_inputs: Vec<Label>,
     nondet_inputs_len: u32,
-    pub public_outputs: Vec<Label>,
+    pub nondet_inputs: Vec<Label>,
     public_outputs_len: u32,
-    nodes: HashMap<Label, Node>,
+    pub public_outputs: Vec<Label>,
     nodes_len: u32,
+    pub nodes: HashMap<Label, Node>,
 }
 
 impl Circuit {
@@ -1642,12 +1694,105 @@ impl Circuit {
 
     /// `to_bytes` converts the `Circuit` to a vector of bytes.
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
-        unreachable!() // TODO
+        self.validate()?;
+
+        let mut buf = Vec::new();
+
+        buf.extend_from_slice(&self.id[..]);
+
+        // TODO: public_inputs_len
+        
+        for label in self.public_inputs.clone() {
+            buf.extend_from_slice(&label.to_bytes()[..]);
+        }
+
+        // TODO: nondet_inputs_len
+
+        for label in self.nondet_inputs.clone() {
+            buf.extend_from_slice(&label.to_bytes()[..]);
+        }
+
+        // TODO: public_outputs_len
+
+        for label in self.public_outputs.clone() {
+            buf.extend_from_slice(&label.to_bytes()[..]);
+        }
+
+        // TODO: nodes_len
+
+        for (label, node) in self.nodes.clone() {
+            buf.extend_from_slice(&label.to_bytes()[..]);
+            buf.extend_from_slice(&node.to_bytes()?);
+        }
+
+        Ok(buf)
     }
 
     /// `from_bytes` creates a new `Circuit` from a slice of bytes.
-    pub fn from_bytes(_buf: &[u8]) -> Result<Circuit> {
-        unreachable!() // TODO
+    pub fn from_bytes(buf: &[u8]) -> Result<Circuit> {
+        if buf.len() < 32 + (8*4) {
+            let err = Error::new_circuit("invalid length", None);
+            return Err(err);
+        }
+
+        let mut id = [0u8; 32];
+
+        for (i, v) in buf[0..32].iter().enumerate() {
+            id[i] = *v;
+        }
+
+        // TODO: read public_inputs_len (u32)
+        let public_inputs_len = 0u32;
+
+        let public_inputs: Vec<Label> = Vec::new();
+
+        for _i in 0..public_inputs_len {
+            // TODO
+        }
+
+        // TODO: read nondet_inputs_len (u32)
+        let nondet_inputs_len = 0u32;
+
+        let nondet_inputs: Vec<Label> = Vec::new();
+
+        for _i in 0..nondet_inputs_len {
+            // TODO
+        }
+
+        // TODO: read public_outputs_len (u32)
+        let public_outputs_len = 0u32;
+
+        // TODO
+        let public_outputs: Vec<Label> = Vec::new();
+
+        for _i in 0..public_outputs_len {
+            // TODO
+        }
+
+        // TODO: read nodes_len (u32)
+        let nodes_len = 0u32;
+
+        let nodes: HashMap<Label, Node> = HashMap::new();
+
+        for _i in 0..nodes_len {
+            // TODO
+        }
+
+        let circuit = Circuit {
+            id,
+            public_inputs_len,
+            public_inputs,
+            nondet_inputs_len,
+            nondet_inputs,
+            public_outputs_len,
+            public_outputs,
+            nodes_len,
+            nodes,
+        };
+
+        circuit.validate()?;
+
+        Ok(circuit)
     }
 
     /// `validate` validates the `Circuit`.
