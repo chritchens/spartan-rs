@@ -1,15 +1,15 @@
-use typenum::consts::U256;
-use generic_array::{ArrayLength, GenericArray};
 use curve25519_dalek::scalar::Scalar;
-use rand_core::{RngCore, CryptoRng};
-use rand_os::OsRng;
 use digest::Digest;
+use generic_array::{ArrayLength, GenericArray};
+use rand_core::{CryptoRng, RngCore};
+use rand_os::OsRng;
 use sha2::Sha256;
 use std::collections::HashMap;
-use std::fmt;
 use std::error;
-use std::result;
+use std::fmt;
 use std::ops::{Index, IndexMut};
+use std::result;
+use typenum::consts::U256;
 
 /// `ErrorKind` is the type of error in `Error`.
 #[derive(Clone, Eq, PartialEq, Debug)]
@@ -33,12 +33,16 @@ impl Default for ErrorKind {
 pub struct Error {
     kind: ErrorKind,
     msg: String,
-    source: Option<Box<dyn error::Error + 'static>>
+    source: Option<Box<dyn error::Error + 'static>>,
 }
 
 impl Error {
     /// `new` creates a new `Error`.
-    pub fn new(kind: ErrorKind, msg: &str, source: Option<Box<dyn error::Error + 'static>>) -> Error {
+    pub fn new(
+        kind: ErrorKind,
+        msg: &str,
+        source: Option<Box<dyn error::Error + 'static>>,
+    ) -> Error {
         Error {
             kind,
             msg: msg.into(),
@@ -85,7 +89,7 @@ impl fmt::Display for Error {
             ErrorKind::Op => write!(f, "Op: {}", self.msg),
             ErrorKind::Node => write!(f, "Op: {}", self.msg),
             ErrorKind::Circuit => write!(f, "Op: {}", self.msg),
-            ErrorKind::Other => write!(f, "Other: {}", self.msg)
+            ErrorKind::Other => write!(f, "Other: {}", self.msg),
         }
     }
 }
@@ -98,12 +102,11 @@ pub type Result<T> = result::Result<T, Error>;
 /// `random_bytes` creates a vector of random bytes.
 #[allow(dead_code)]
 fn random_bytes(len: usize) -> Result<Vec<u8>> {
-    let mut rng = OsRng::new()
-        .map_err(|e| {
-            let msg = format!("{}", e);
-            let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
-            Error::new_io(&msg, source)
-        })?;
+    let mut rng = OsRng::new().map_err(|e| {
+        let msg = format!("{}", e);
+        let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+        Error::new_io(&msg, source)
+    })?;
 
     let res = random_bytes_from_rng(&mut rng, len);
     Ok(res)
@@ -111,7 +114,8 @@ fn random_bytes(len: usize) -> Result<Vec<u8>> {
 
 /// `random_bytes_from_rng` creates a vector of random bytes using a given RNG.
 pub fn random_bytes_from_rng<R>(rng: &mut R, len: usize) -> Vec<u8>
-    where R: RngCore
+where
+    R: RngCore,
 {
     let mut buf = Vec::new();
     buf.resize(len, 0);
@@ -126,12 +130,11 @@ pub fn random_bytes_from_rng<R>(rng: &mut R, len: usize) -> Vec<u8>
 /// `random_u32` returns a random `u32`.
 #[allow(dead_code)]
 fn random_u32() -> Result<u32> {
-    let mut rng = OsRng::new()
-        .map_err(|e| {
-            let msg = format!("{}", e);
-            let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
-            Error::new_io(&msg, source)
-        })?;
+    let mut rng = OsRng::new().map_err(|e| {
+        let msg = format!("{}", e);
+        let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+        Error::new_io(&msg, source)
+    })?;
 
     let res = random_u32_from_rng(&mut rng);
     Ok(res)
@@ -139,7 +142,8 @@ fn random_u32() -> Result<u32> {
 
 /// `random_u32_from_rng` returns a random `u32` using a given RNG.
 pub fn random_u32_from_rng<R>(rng: &mut R) -> u32
-    where R: RngCore
+where
+    R: RngCore,
 {
     rng.next_u32()
 }
@@ -147,12 +151,11 @@ pub fn random_u32_from_rng<R>(rng: &mut R) -> u32
 /// `random_bool` returns a random `bool`.
 #[allow(dead_code)]
 fn random_bool() -> Result<bool> {
-    let mut rng = OsRng::new()
-        .map_err(|e| {
-            let msg = format!("{}", e);
-            let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
-            Error::new_io(&msg, source)
-        })?;
+    let mut rng = OsRng::new().map_err(|e| {
+        let msg = format!("{}", e);
+        let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+        Error::new_io(&msg, source)
+    })?;
 
     let res = random_bool_from_rng(&mut rng);
     Ok(res)
@@ -160,7 +163,8 @@ fn random_bool() -> Result<bool> {
 
 /// `random_bool_from_rng` returns a random `bool` using a given RNG.
 pub fn random_bool_from_rng<R>(rng: &mut R) -> bool
-    where R: RngCore
+where
+    R: RngCore,
 {
     rng.next_u32() >= (std::u32::MAX / 2)
 }
@@ -224,7 +228,8 @@ fn test_change_bit() {
 /// `BitArray` is an array of bits.
 #[derive(Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
 pub struct BitArray<N>(GenericArray<bool, N>)
-    where N: ArrayLength<bool>;
+where
+    N: ArrayLength<bool>;
 
 /// `BitArray256` is a wrapper around `BitArray<U256>`.
 #[derive(Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
@@ -238,27 +243,26 @@ impl BitArray256 {
 
     /// `random` creates a new random `BitArray256`.
     pub fn random() -> Result<BitArray256> {
-        let mut rng = OsRng::new()
-            .map_err(|e| {
-                let msg = format!("{}", e);
-                let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
-                Error::new_io(&msg, source)
-            })?;
+        let mut rng = OsRng::new().map_err(|e| {
+            let msg = format!("{}", e);
+            let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+            Error::new_io(&msg, source)
+        })?;
 
         BitArray256::from_rng(&mut rng)
     }
 
     /// `from_rng` creates a new random `BitArray256` from a given RNG.
     pub fn from_rng<R>(rng: &mut R) -> Result<BitArray256>
-        where R: RngCore
+    where
+        R: RngCore,
     {
         let mut buf = [0u8; 32];
-        rng.try_fill_bytes(&mut buf)
-            .map_err(|e| {
-                let msg = format!("{}", e);
-                let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
-                Error::new_io(&msg, source)
-            })?;
+        rng.try_fill_bytes(&mut buf).map_err(|e| {
+            let msg = format!("{}", e);
+            let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+            Error::new_io(&msg, source)
+        })?;
 
         let ba = BitArray256::from_bytes(buf);
         Ok(ba)
@@ -270,7 +274,7 @@ impl BitArray256 {
 
         for i in 0..32 {
             for j in 0..8 {
-               ba[i*8 + j] = extract_bit(buf[i], j);
+                ba[i * 8 + j] = extract_bit(buf[i], j);
             }
         }
 
@@ -283,7 +287,7 @@ impl BitArray256 {
 
         for i in 0..32 {
             for j in 0..8 {
-                buf[i] = change_bit(buf[i], j, self[i*8 +j]);
+                buf[i] = change_bit(buf[i], j, self[i * 8 + j]);
             }
         }
 
@@ -317,7 +321,7 @@ fn test_bitarray_bytes() {
         let res = ba.to_bytes();
         assert_eq!(buf, res)
     }
- }
+}
 
 /// `Value` is the a value in the field of order q = 2^255 -19.
 #[derive(Copy, Clone, Default, Eq, PartialEq, Debug)]
@@ -331,12 +335,11 @@ impl Value {
 
     /// `random` creates a new random `Value`.
     pub fn random() -> Result<Value> {
-        let mut rng = OsRng::new()
-            .map_err(|e| {
-                let msg = format!("{}", e);
-                let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
-                Error::new_io(&msg, source)
-            })?;
+        let mut rng = OsRng::new().map_err(|e| {
+            let msg = format!("{}", e);
+            let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+            Error::new_io(&msg, source)
+        })?;
 
         let value = Value::from_rng(&mut rng);
         Ok(value)
@@ -344,7 +347,8 @@ impl Value {
 
     /// `from_rng` creates a new random `Value` from a given RNG.
     pub fn from_rng<R>(mut rng: &mut R) -> Value
-        where R: RngCore + CryptoRng
+    where
+        R: RngCore + CryptoRng,
     {
         let scalar = Scalar::random(&mut rng).reduce();
         Value(scalar)
@@ -426,7 +430,8 @@ impl Label {
 
     /// `from_rng` creates a new random `Label` from a given RNG.
     pub fn from_rng<R>(rng: &mut R) -> Result<Label>
-        where R: RngCore
+    where
+        R: RngCore,
     {
         let ba = BitArray256::from_rng(rng)?;
         let label = Label(ba);
@@ -455,7 +460,7 @@ impl Label {
 
     /// `from_bitarray` creates a `Label` from a `BitArray256`.
     pub fn from_bitarray(buf: BitArray256) -> Label {
-       Label(buf)
+        Label(buf)
     }
 
     /// `to_bitarray` converts the `Label` to a `BitArray256`.
@@ -464,17 +469,12 @@ impl Label {
     }
 
     /// `from_node_data` creates a new `Label` from `Node` fields.
-    pub fn from_node_data(nonce: u32,
-                          op: &Op,
-                          value: Option<Value>) -> Result<Label>
-    {
+    pub fn from_node_data(nonce: u32, op: &Op, value: Option<Value>) -> Result<Label> {
         let mut buf = Vec::new();
 
         op.validate()?;
 
-        let nonce_buf: [u8; 4] = unsafe {
-            std::mem::transmute::<u32, [u8; 4]>(nonce)
-        };
+        let nonce_buf: [u8; 4] = unsafe { std::mem::transmute::<u32, [u8; 4]>(nonce) };
 
         let op_buf: Vec<u8> = op.to_bytes()?;
 
@@ -533,10 +533,24 @@ fn test_label_bitarray() {
 /// `Op` is an arithmetic circuit operation.
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub enum Op {
-    Add { a: Box<Label>, b: Box<Label>, c: Box<Label> },
-    Mul { a: Box<Label>, b: Box<Label>, c: Box<Label> },
-    Io  { a: Box<Label>, b: Box<Label>, c: Box<Label> },
-    Idx { a: Box<Label> },
+    Add {
+        a: Box<Label>,
+        b: Box<Label>,
+        c: Box<Label>,
+    },
+    Mul {
+        a: Box<Label>,
+        b: Box<Label>,
+        c: Box<Label>,
+    },
+    Io {
+        a: Box<Label>,
+        b: Box<Label>,
+        c: Box<Label>,
+    },
+    Idx {
+        a: Box<Label>,
+    },
 }
 
 impl Op {
@@ -581,7 +595,8 @@ impl Op {
 
     /// `random_add_from_rng` creates a random Add `Op` from a RNG.
     pub fn random_add_from_rng<R>(rng: &mut R) -> Result<Op>
-        where R: RngCore
+    where
+        R: RngCore,
     {
         let a = Label::from_rng(rng)?;
         let b = Label::from_rng(rng)?;
@@ -608,7 +623,7 @@ impl Op {
                 buf.extend_from_slice(&c_buf[..]);
 
                 Ok(buf)
-            },
+            }
             _ => {
                 let err = Error::new_op("invalid op", None);
                 Err(err)
@@ -681,7 +696,8 @@ impl Op {
 
     /// `random_mul_from_rng` creates a random Mul `Op` from a RNG.
     pub fn random_mul_from_rng<R>(rng: &mut R) -> Result<Op>
-        where R: RngCore
+    where
+        R: RngCore,
     {
         let a = Label::from_rng(rng)?;
         let b = Label::from_rng(rng)?;
@@ -708,7 +724,7 @@ impl Op {
                 buf.extend_from_slice(&c_buf[..]);
 
                 Ok(buf)
-            },
+            }
             _ => {
                 let err = Error::new_op("invalid op", None);
                 Err(err)
@@ -781,7 +797,8 @@ impl Op {
 
     /// `random_io_from_rng` creates a random Io `Op` from a RNG.
     pub fn random_io_from_rng<R>(rng: &mut R) -> Result<Op>
-        where R: RngCore
+    where
+        R: RngCore,
     {
         let a = Label::from_rng(rng)?;
         let b = Label::from_rng(rng)?;
@@ -808,7 +825,7 @@ impl Op {
                 buf.extend_from_slice(&c_buf[..]);
 
                 Ok(buf)
-            },
+            }
             _ => {
                 let err = Error::new_op("invalid op", None);
                 Err(err)
@@ -854,7 +871,9 @@ impl Op {
 
     /// `new_idx` creates a new Idx `Op`.
     pub fn new_idx(a: &Label) -> Op {
-        Op::Idx { a: Box::new(a.to_owned()) }
+        Op::Idx {
+            a: Box::new(a.to_owned()),
+        }
     }
 
     /// `random_idx` creates a random Idx `Op`.
@@ -867,7 +886,8 @@ impl Op {
 
     /// `random_idx_from_rng` creates a random Idx `Op` from a RNG.
     pub fn random_idx_from_rng<R>(rng: &mut R) -> Result<Op>
-        where R: RngCore
+    where
+        R: RngCore,
     {
         let a = Label::from_rng(rng)?;
         let op = Op::new_idx(&a);
@@ -889,7 +909,7 @@ impl Op {
                 buf.extend_from_slice(&a_buf[..]);
 
                 Ok(buf)
-            },
+            }
             _ => {
                 let err = Error::new_op("invalid op", None);
                 Err(err)
@@ -937,7 +957,8 @@ impl Op {
 
     /// `from_rng` creates a random `Op` from a given RNG.
     pub fn from_rng<R>(rng: &mut R) -> Result<Op>
-        where R: RngCore
+    where
+        R: RngCore,
     {
         let idx = random_u32()?;
 
@@ -984,9 +1005,7 @@ impl Op {
     /// `validate` validates an `Op`.
     pub fn validate(&self) -> Result<()> {
         match self {
-            Op::Add { a, b, c } |
-            Op::Mul { a, b, c } |
-            Op::Io  { a, b, c } => {
+            Op::Add { a, b, c } | Op::Mul { a, b, c } | Op::Io { a, b, c } => {
                 if (*a == *b) || (*a == *c) || (*b == *c) {
                     let msg = "labels are not distinct";
                     let source = None;
@@ -995,15 +1014,17 @@ impl Op {
                 } else {
                     Ok(())
                 }
-            },
-            _ => Ok(())
+            }
+            _ => Ok(()),
         }
     }
 }
 
 impl Default for Op {
     fn default() -> Op {
-        Op::Idx { a: Box::new(Label::default()) }
+        Op::Idx {
+            a: Box::new(Label::default()),
+        }
     }
 }
 
@@ -1071,12 +1092,12 @@ fn test_op_add_bytes() {
             Err(err) => {
                 let msg: String = "invalid op length".into();
                 assert_eq!(err.msg, msg)
-            },
+            }
             _ => panic!("expected 'invalid op length'"),
         }
 
         let mut invalid_code_buf = [0u8; 97];
-        invalid_code_buf[0] = Op::ADD_CODE+1;
+        invalid_code_buf[0] = Op::ADD_CODE + 1;
         let res = Op::add_from_bytes(&invalid_code_buf[..]);
         assert!(res.is_err());
 
@@ -1084,10 +1105,9 @@ fn test_op_add_bytes() {
             Err(err) => {
                 let msg: String = "invalid op code".into();
                 assert_eq!(err.msg, msg)
-            },
+            }
             _ => panic!("expected 'invalid op code'"),
         }
-
     }
 }
 
@@ -1155,12 +1175,12 @@ fn test_op_mul_bytes() {
             Err(err) => {
                 let msg: String = "invalid op length".into();
                 assert_eq!(err.msg, msg)
-            },
+            }
             _ => panic!("expected 'invalid op length'"),
         }
 
         let mut invalid_code_buf = [0u8; 97];
-        invalid_code_buf[0] = Op::MUL_CODE+1;
+        invalid_code_buf[0] = Op::MUL_CODE + 1;
         let res = Op::mul_from_bytes(&invalid_code_buf[..]);
         assert!(res.is_err());
 
@@ -1168,7 +1188,7 @@ fn test_op_mul_bytes() {
             Err(err) => {
                 let msg: String = "invalid op code".into();
                 assert_eq!(err.msg, msg)
-            },
+            }
             _ => panic!("expected 'invalid op code'"),
         }
     }
@@ -1237,12 +1257,12 @@ fn test_op_io_bytes() {
             Err(err) => {
                 let msg: String = "invalid op length".into();
                 assert_eq!(err.msg, msg)
-            },
+            }
             _ => panic!("expected 'invalid op length'"),
         }
 
         let mut invalid_code_buf = [0u8; 97];
-        invalid_code_buf[0] = Op::IO_CODE+1;
+        invalid_code_buf[0] = Op::IO_CODE + 1;
         let res = Op::io_from_bytes(&invalid_code_buf[..]);
         assert!(res.is_err());
 
@@ -1250,7 +1270,7 @@ fn test_op_io_bytes() {
             Err(err) => {
                 let msg: String = "invalid op code".into();
                 assert_eq!(err.msg, msg)
-            },
+            }
             _ => panic!("expected 'invalid op code'"),
         }
     }
@@ -1287,12 +1307,12 @@ fn test_op_idx_bytes() {
             Err(err) => {
                 let msg: String = "invalid op length".into();
                 assert_eq!(err.msg, msg)
-            },
+            }
             _ => panic!("expected 'invalid op length'"),
         }
 
         let mut invalid_code_buf = [0u8; 33];
-        invalid_code_buf[0] = Op::IDX_CODE+1;
+        invalid_code_buf[0] = Op::IDX_CODE + 1;
         let res = Op::idx_from_bytes(&invalid_code_buf[..]);
         assert!(res.is_err());
 
@@ -1300,7 +1320,7 @@ fn test_op_idx_bytes() {
             Err(err) => {
                 let msg: String = "invalid op code".into();
                 assert_eq!(err.msg, msg)
-            },
+            }
             _ => panic!("expected 'invalid op code'"),
         }
     }
@@ -1322,7 +1342,7 @@ fn test_op_bytes() {
             Err(err) => {
                 let msg: String = "invalid op length".into();
                 assert_eq!(err.msg, msg)
-            },
+            }
             _ => panic!("expected 'invalid op length'"),
         }
 
@@ -1335,7 +1355,7 @@ fn test_op_bytes() {
             Err(err) => {
                 let msg: String = "invalid op code".into();
                 assert_eq!(err.msg, msg)
-            },
+            }
             _ => panic!("expected 'invalid op code'"),
         }
 
@@ -1465,19 +1485,19 @@ impl Node {
 
     /// `random` creates a new random `Node`.
     pub fn random() -> Result<Node> {
-        let mut rng = OsRng::new()
-            .map_err(|e| {
-                let msg = format!("{}", e);
-                let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
-                Error::new_io(&msg, source)
-            })?;
+        let mut rng = OsRng::new().map_err(|e| {
+            let msg = format!("{}", e);
+            let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+            Error::new_io(&msg, source)
+        })?;
 
         Node::from_rng(&mut rng)
     }
 
     /// `from_rng` creates a new random `Node` from a given RNG.
     pub fn from_rng<R>(mut rng: &mut R) -> Result<Node>
-        where R: RngCore + CryptoRng
+    where
+        R: RngCore + CryptoRng,
     {
         let nonce = random_u32()?;
         let op = Op::from_rng(&mut rng)?;
@@ -1490,7 +1510,6 @@ impl Node {
 
         Node::new(nonce, &op, value)
     }
-
 
     /// `validate` validates the `Node`.
     pub fn validate(&self) -> Result<()> {
