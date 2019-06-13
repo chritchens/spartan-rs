@@ -1,3 +1,4 @@
+use byteorder::{LittleEndian, WriteBytesExt};
 use curve25519_dalek::scalar::Scalar;
 use digest::Digest;
 use generic_array::{ArrayLength, GenericArray};
@@ -1516,15 +1517,37 @@ impl Node {
         let mut buf = Vec::new();
 
         buf.extend_from_slice(&self.label.to_bytes()[..]);
-        // TODO: write nonce (u32)
-        // TODO: write op len
-        buf.extend_from_slice(&self.op.to_bytes()?[..]);
+        buf.write_u32::<LittleEndian>(self.nonce).map_err(|e| {
+            let msg = format!("{}", e);
+            let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+            Error::new_io(&msg, source)
+        })?;
+
+        let op_buf = self.op.to_bytes()?;
+        let op_buf_len = op_buf.len() as u32;
+
+        buf.write_u32::<LittleEndian>(op_buf_len).map_err(|e| {
+            let msg = format!("{}", e);
+            let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+            Error::new_io(&msg, source)
+        })?;
+
+        buf.extend_from_slice(&op_buf);
 
         if let Some(value) = self.value {
-            // TODO: write 1u32
+            buf.write_u32::<LittleEndian>(1u32).map_err(|e| {
+                let msg = format!("{}", e);
+                let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+                Error::new_io(&msg, source)
+            })?;
+
             buf.extend_from_slice(&value.to_bytes()[..]);
         } else {
-            // TODO: write 0u32
+            buf.write_u32::<LittleEndian>(0u32).map_err(|e| {
+                let msg = format!("{}", e);
+                let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+                Error::new_io(&msg, source)
+            })?;
         }
 
         Ok(buf)
@@ -1700,25 +1723,44 @@ impl Circuit {
 
         buf.extend_from_slice(&self.id[..]);
 
-        // TODO: public_inputs_len
-        
+        buf.write_u32::<LittleEndian>(self.public_inputs_len)
+            .map_err(|e| {
+                let msg = format!("{}", e);
+                let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+                Error::new_io(&msg, source)
+            })?;
+
         for label in self.public_inputs.clone() {
             buf.extend_from_slice(&label.to_bytes()[..]);
         }
 
-        // TODO: nondet_inputs_len
+        buf.write_u32::<LittleEndian>(self.nondet_inputs_len)
+            .map_err(|e| {
+                let msg = format!("{}", e);
+                let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+                Error::new_io(&msg, source)
+            })?;
 
         for label in self.nondet_inputs.clone() {
             buf.extend_from_slice(&label.to_bytes()[..]);
         }
 
-        // TODO: public_outputs_len
+        buf.write_u32::<LittleEndian>(self.public_outputs_len)
+            .map_err(|e| {
+                let msg = format!("{}", e);
+                let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+                Error::new_io(&msg, source)
+            })?;
 
         for label in self.public_outputs.clone() {
             buf.extend_from_slice(&label.to_bytes()[..]);
         }
 
-        // TODO: nodes_len
+        buf.write_u32::<LittleEndian>(self.nodes_len).map_err(|e| {
+            let msg = format!("{}", e);
+            let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+            Error::new_io(&msg, source)
+        })?;
 
         for (label, node) in self.nodes.clone() {
             buf.extend_from_slice(&label.to_bytes()[..]);
@@ -1730,7 +1772,7 @@ impl Circuit {
 
     /// `from_bytes` creates a new `Circuit` from a slice of bytes.
     pub fn from_bytes(buf: &[u8]) -> Result<Circuit> {
-        if buf.len() < 32 + (8*4) {
+        if buf.len() < 32 + (8 * 4) {
             let err = Error::new_circuit("invalid length", None);
             return Err(err);
         }
