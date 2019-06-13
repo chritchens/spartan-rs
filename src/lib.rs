@@ -1,4 +1,4 @@
-use byteorder::{LittleEndian, WriteBytesExt};
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use curve25519_dalek::scalar::Scalar;
 use digest::Digest;
 use generic_array::{ArrayLength, GenericArray};
@@ -8,6 +8,7 @@ use sha2::Sha256;
 use std::collections::HashMap;
 use std::error;
 use std::fmt;
+use std::io::{Cursor, Read};
 use std::ops::{Index, IndexMut};
 use std::result;
 use typenum::consts::U256;
@@ -1554,20 +1555,64 @@ impl Node {
     }
 
     /// `from_bytes` creates a new `Node` from a slice of bytes.
-    pub fn from_bytes(_buf: &[u8]) -> Result<Node> {
-        let label_buf = [0u8; 32]; // TODO
+    pub fn from_bytes(buf: &[u8]) -> Result<Node> {
+        if buf.len() < 109 {
+            let err = Error::new_io("invalid length", None);
+            return Err(err);
+        }
+
+        let mut reader = Cursor::new(buf);
+
+        let mut label_buf = [0u8; 32];
+
+        reader.read_exact(&mut label_buf[..]).map_err(|e| {
+            let msg = format!("{}", e);
+            let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+            Error::new_io(&msg, source)
+        })?;
+
         let label = Label::from_bytes(label_buf);
 
-        let nonce = 0u32; // TODO
+        let nonce = reader.read_u32::<LittleEndian>().map_err(|e| {
+            let msg = format!("{}", e);
+            let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+            Error::new_io(&msg, source)
+        })?;
 
-        let op_buf = Vec::new(); // TODO
+        let op_buf_len = reader.read_u32::<LittleEndian>().map_err(|e| {
+            let msg = format!("{}", e);
+            let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+            Error::new_io(&msg, source)
+        })?;
+
+        let mut op_buf = Vec::new();
+        op_buf.resize(op_buf_len as usize, 0);
+
+        reader.read_exact(&mut op_buf).map_err(|e| {
+            let msg = format!("{}", e);
+            let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+            Error::new_io(&msg, source)
+        })?;
+
         let op = Op::from_bytes(&op_buf)?;
 
-        let value_flag = 0; // TODO
+        let value_flag = reader.read_u32::<LittleEndian>().map_err(|e| {
+            let msg = format!("{}", e);
+            let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+            Error::new_io(&msg, source)
+        })?;
+
         let mut value = None;
 
         if value_flag == 1 {
-            let value_buf = [0u8; 32]; // TODO
+            let mut value_buf = [0u8; 32];
+
+            reader.read_exact(&mut value_buf[..]).map_err(|e| {
+                let msg = format!("{}", e);
+                let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+                Error::new_io(&msg, source)
+            })?;
+
             value = Some(Value::from_bytes(value_buf)?);
         } else if value_flag != 0 {
             let err = Error::new_node("invalid value", None);
@@ -1647,6 +1692,23 @@ fn test_node_random() {
 }
 
 #[test]
+fn test_node_bytes() {
+    for _ in 0..10 {
+        let node_a = Node::random().unwrap();
+
+        let res = node_a.to_bytes();
+        assert!(res.is_ok());
+        let node_buf = res.unwrap();
+
+        let res = Node::from_bytes(&node_buf);
+        assert!(res.is_ok());
+        let node_b = res.unwrap();
+
+        assert_eq!(node_a, node_b);
+    }
+}
+
+#[test]
 fn test_node_validate() {
     for _ in 0..10 {
         let res = Node::random();
@@ -1681,7 +1743,7 @@ fn test_node_validate() {
 }
 
 /// `Circuit` is an arithmetic circuit in the field of order q = 2^255 -19.
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Eq, PartialEq, Default, Debug)]
 pub struct Circuit {
     pub id: [u8; 32],
     public_inputs_len: u32,
@@ -1705,7 +1767,11 @@ impl Circuit {
 
     /// `calc_id` calculates the `Circuit` id.
     pub fn calc_id(&self) -> Result<[u8; 32]> {
-        let buf = self.to_bytes()?;
+        let mut clone = self.clone();
+        clone.id = [0u8; 32];
+
+        let buf = clone.to_bytes()?;
+
         let mut id = [0u8; 32];
 
         for (i, v) in Sha256::digest(&buf).iter().enumerate() {
@@ -1717,8 +1783,6 @@ impl Circuit {
 
     /// `to_bytes` converts the `Circuit` to a vector of bytes.
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
-        self.validate()?;
-
         let mut buf = Vec::new();
 
         buf.extend_from_slice(&self.id[..]);
@@ -1764,7 +1828,17 @@ impl Circuit {
 
         for (label, node) in self.nodes.clone() {
             buf.extend_from_slice(&label.to_bytes()[..]);
-            buf.extend_from_slice(&node.to_bytes()?);
+
+            let node_buf = node.to_bytes()?;
+            let node_buf_len = node_buf.len() as u32;
+
+            buf.write_u32::<LittleEndian>(node_buf_len).map_err(|e| {
+                let msg = format!("{}", e);
+                let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+                Error::new_io(&msg, source)
+            })?;
+
+            buf.extend_from_slice(&node_buf);
         }
 
         Ok(buf)
@@ -1772,52 +1846,123 @@ impl Circuit {
 
     /// `from_bytes` creates a new `Circuit` from a slice of bytes.
     pub fn from_bytes(buf: &[u8]) -> Result<Circuit> {
-        if buf.len() < 32 + (8 * 4) {
+        if buf.len() < 48 {
             let err = Error::new_circuit("invalid length", None);
             return Err(err);
         }
 
+        let mut reader = Cursor::new(buf);
+
         let mut id = [0u8; 32];
+        reader.read_exact(&mut id[..]).map_err(|e| {
+            let msg = format!("{}", e);
+            let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+            Error::new_io(&msg, source)
+        })?;
 
-        for (i, v) in buf[0..32].iter().enumerate() {
-            id[i] = *v;
+        let public_inputs_len = reader.read_u32::<LittleEndian>().map_err(|e| {
+            let msg = format!("{}", e);
+            let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+            Error::new_io(&msg, source)
+        })?;
+
+        let mut public_inputs: Vec<Label> = Vec::new();
+
+        for _ in 0..public_inputs_len {
+            let mut label_buf = [0u8; 32];
+
+            reader.read_exact(&mut label_buf[..]).map_err(|e| {
+                let msg = format!("{}", e);
+                let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+                Error::new_io(&msg, source)
+            })?;
+
+            let label = Label::from_bytes(label_buf);
+
+            public_inputs.push(label);
         }
 
-        // TODO: read public_inputs_len (u32)
-        let public_inputs_len = 0u32;
+        let nondet_inputs_len = reader.read_u32::<LittleEndian>().map_err(|e| {
+            let msg = format!("{}", e);
+            let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+            Error::new_io(&msg, source)
+        })?;
 
-        let public_inputs: Vec<Label> = Vec::new();
+        let mut nondet_inputs: Vec<Label> = Vec::new();
 
-        for _i in 0..public_inputs_len {
-            // TODO
+        for _ in 0..nondet_inputs_len {
+            let mut label_buf = [0u8; 32];
+
+            reader.read_exact(&mut label_buf[..]).map_err(|e| {
+                let msg = format!("{}", e);
+                let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+                Error::new_io(&msg, source)
+            })?;
+
+            let label = Label::from_bytes(label_buf);
+
+            nondet_inputs.push(label);
         }
 
-        // TODO: read nondet_inputs_len (u32)
-        let nondet_inputs_len = 0u32;
+        let public_outputs_len = reader.read_u32::<LittleEndian>().map_err(|e| {
+            let msg = format!("{}", e);
+            let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+            Error::new_io(&msg, source)
+        })?;
 
-        let nondet_inputs: Vec<Label> = Vec::new();
+        let mut public_outputs: Vec<Label> = Vec::new();
 
-        for _i in 0..nondet_inputs_len {
-            // TODO
+        for _ in 0..public_outputs_len {
+            let mut label_buf = [0u8; 32];
+
+            reader.read_exact(&mut label_buf[..]).map_err(|e| {
+                let msg = format!("{}", e);
+                let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+                Error::new_io(&msg, source)
+            })?;
+
+            let label = Label::from_bytes(label_buf);
+
+            public_outputs.push(label);
         }
 
-        // TODO: read public_outputs_len (u32)
-        let public_outputs_len = 0u32;
+        let nodes_len = reader.read_u32::<LittleEndian>().map_err(|e| {
+            let msg = format!("{}", e);
+            let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+            Error::new_io(&msg, source)
+        })?;
 
-        // TODO
-        let public_outputs: Vec<Label> = Vec::new();
+        let mut nodes: HashMap<Label, Node> = HashMap::new();
 
-        for _i in 0..public_outputs_len {
-            // TODO
-        }
+        for _ in 0..nodes_len {
+            let mut label_buf = [0u8; 32];
 
-        // TODO: read nodes_len (u32)
-        let nodes_len = 0u32;
+            reader.read_exact(&mut label_buf[..]).map_err(|e| {
+                let msg = format!("{}", e);
+                let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+                Error::new_io(&msg, source)
+            })?;
 
-        let nodes: HashMap<Label, Node> = HashMap::new();
+            let label = Label::from_bytes(label_buf);
 
-        for _i in 0..nodes_len {
-            // TODO
+            let node_buf_len = reader.read_u32::<LittleEndian>().map_err(|e| {
+                let msg = format!("{}", e);
+                let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+                Error::new_io(&msg, source)
+            })?;
+
+            let mut node_buf = Vec::new();
+            node_buf.resize(node_buf_len as usize, 0);
+
+            reader.read_exact(&mut node_buf[..]).map_err(|e| {
+                let msg = format!("{}", e);
+                let source = Some(Box::new(e) as Box<dyn error::Error + 'static>);
+                Error::new_io(&msg, source)
+            })?;
+
+            let node = Node::from_bytes(&node_buf)?;
+
+            nodes.insert(label, node);
         }
 
         let circuit = Circuit {
@@ -1875,4 +2020,33 @@ impl Circuit {
 
         Ok(())
     }
+}
+
+#[test]
+fn test_circuit_new() {
+    let res = Circuit::new();
+    assert!(res.is_ok());
+}
+
+#[test]
+fn test_circuit_new_bytes() {
+    // NB: this has to be substituted
+
+    let circuit_a = Circuit::new().unwrap();
+    let res = circuit_a.to_bytes();
+    assert!(res.is_ok());
+
+    let circuit_buf = res.unwrap();
+    let res = Circuit::from_bytes(&circuit_buf);
+    assert!(res.is_ok());
+
+    let circuit_b = res.unwrap();
+    assert_eq!(circuit_a, circuit_b)
+}
+
+#[test]
+fn test_circuit_validate() {
+    let new = Circuit::new().unwrap();
+    let res = new.validate();
+    assert!(res.is_ok());
 }
