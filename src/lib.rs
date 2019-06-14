@@ -607,6 +607,14 @@ impl Op {
         Op::new_add(&a, &b, &c)
     }
 
+    /// `is_add` returns if the `Op` is an Add `Op`.
+    pub fn is_add(&self) -> bool {
+        match self {
+            Op::Add { .. } => true,
+            _ => false,
+        }
+    }
+
     /// `add_to_bytes` converts the Add `Op` to a vector of bytes.
     pub fn add_to_bytes(&self) -> Result<Vec<u8>> {
         self.validate()?;
@@ -706,6 +714,14 @@ impl Op {
         let c = Label::from_rng(rng)?;
 
         Op::new_mul(&a, &b, &c)
+    }
+
+    /// `is_mul` returns if the `Op` is an Mul `Op`.
+    pub fn is_mul(&self) -> bool {
+        match self {
+            Op::Mul { .. } => true,
+            _ => false,
+        }
     }
 
     /// `mul_to_bytes` converts the Mul `Op` to a vector of bytes.
@@ -809,6 +825,14 @@ impl Op {
         Op::new_io(&a, &b, &c)
     }
 
+    /// `is_io` returns if the `Op` is an Io `Op`.
+    pub fn is_io(&self) -> bool {
+        match self {
+            Op::Io { .. } => true,
+            _ => false,
+        }
+    }
+
     /// `io_to_bytes` converts the Io `Op` to a vector of bytes.
     pub fn io_to_bytes(&self) -> Result<Vec<u8>> {
         self.validate()?;
@@ -895,6 +919,14 @@ impl Op {
         let op = Op::new_idx(&a);
 
         Ok(op)
+    }
+
+    /// `is_idx` returns if the `Op` is an Idx `Op`.
+    pub fn is_idx(&self) -> bool {
+        match self {
+            Op::Idx { .. } => true,
+            _ => false,
+        }
     }
 
     /// `idx_to_bytes` converts the Idx `Op` to a vector of bytes.
@@ -1069,6 +1101,9 @@ fn test_op_random_add() {
         let op = Op::random_add().unwrap();
         let res = op.validate();
         assert!(res.is_ok());
+
+        let is_add = op.is_add();
+        assert!(is_add)
     }
 }
 
@@ -1152,6 +1187,9 @@ fn test_op_random_mul() {
         let op = Op::random_mul().unwrap();
         let res = op.validate();
         assert!(res.is_ok());
+
+        let is_mul = op.is_mul();
+        assert!(is_mul)
     }
 }
 
@@ -1234,6 +1272,9 @@ fn test_op_random_io() {
         let op = Op::random_io().unwrap();
         let res = op.validate();
         assert!(res.is_ok());
+
+        let is_io = op.is_io();
+        assert!(is_io)
     }
 }
 
@@ -1284,6 +1325,9 @@ fn test_op_random_idx() {
         let op = Op::random_idx().unwrap();
         let res = op.validate();
         assert!(res.is_ok());
+
+        let is_idx = op.is_idx();
+        assert!(is_idx)
     }
 }
 
