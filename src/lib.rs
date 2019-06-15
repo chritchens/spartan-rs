@@ -535,42 +535,24 @@ fn test_label_bitarray() {
 /// `Op` is an arithmetic circuit operation.
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub enum Op {
-    Add {
-        a: Box<Label>,
-        b: Box<Label>,
-        c: Box<Label>,
-    },
-    Mul {
-        a: Box<Label>,
-        b: Box<Label>,
-        c: Box<Label>,
-    },
-    Io {
-        a: Box<Label>,
-        b: Box<Label>,
-        c: Box<Label>,
-    },
-    Idx {
-        a: Box<Label>,
-    },
+    Noop,
+    Add { a: Box<Label>, b: Box<Label> },
+    Mul { a: Box<Label>, b: Box<Label> },
 }
 
 impl Op {
+    /// `NOOP_CODE` is the code of the Noop `Op`.
+    const NOOP_CODE: u8 = 0x0;
+
     /// `ADD_CODE` is the code of the Add `Op`.
-    const ADD_CODE: u8 = 0x0;
+    const ADD_CODE: u8 = 0x1;
 
     /// `MUL_CODE` is the code of the Mul `Op`.
-    const MUL_CODE: u8 = 0x1;
-
-    /// `IO_CODE` is the code of the Io `Op`.
-    const IO_CODE: u8 = 0x2;
-
-    /// `IDX_CODE` is the code of the Idx `Op`.
-    const IDX_CODE: u8 = 0x3;
+    const MUL_CODE: u8 = 0x2;
 
     /// `new_add` creates a new Add `Op`.
-    pub fn new_add(a: &Label, b: &Label, c: &Label) -> Result<Op> {
-        if (a == b) || (a == c) || (b == c) {
+    pub fn new_add(a: &Label, b: &Label) -> Result<Op> {
+        if a == b {
             let msg = "labels are not distinct";
             let source = None;
             let err = Error::new_op(msg, source);
@@ -580,7 +562,6 @@ impl Op {
         let op = Op::Add {
             a: Box::new(a.to_owned()),
             b: Box::new(b.to_owned()),
-            c: Box::new(c.to_owned()),
         };
 
         Ok(op)
@@ -590,9 +571,8 @@ impl Op {
     pub fn random_add() -> Result<Op> {
         let a = Label::random()?;
         let b = Label::random()?;
-        let c = Label::random()?;
 
-        Op::new_add(&a, &b, &c)
+        Op::new_add(&a, &b)
     }
 
     /// `random_add_from_rng` creates a random Add `Op` from a RNG.
@@ -602,9 +582,8 @@ impl Op {
     {
         let a = Label::from_rng(rng)?;
         let b = Label::from_rng(rng)?;
-        let c = Label::from_rng(rng)?;
 
-        Op::new_add(&a, &b, &c)
+        Op::new_add(&a, &b)
     }
 
     /// `is_add` returns if the `Op` is an Add `Op`.
@@ -620,17 +599,15 @@ impl Op {
         self.validate()?;
 
         match self {
-            Op::Add { a, b, c } => {
+            Op::Add { a, b } => {
                 let mut buf = Vec::new();
 
                 let a_buf = a.to_bytes();
                 let b_buf = b.to_bytes();
-                let c_buf = c.to_bytes();
 
                 buf.push(Op::ADD_CODE);
                 buf.extend_from_slice(&a_buf[..]);
                 buf.extend_from_slice(&b_buf[..]);
-                buf.extend_from_slice(&c_buf[..]);
 
                 Ok(buf)
             }
@@ -643,7 +620,7 @@ impl Op {
 
     /// `add_from_bytes` creates an Add `Op` from a slice of bytes.
     pub fn add_from_bytes(buf: &[u8]) -> Result<Op> {
-        if buf.len() != 97 {
+        if buf.len() != 65 {
             let err = Error::new_op("invalid op length", None);
             return Err(err);
         }
@@ -667,19 +644,12 @@ impl Op {
 
         let b = Label::from_bytes(b_buf);
 
-        let mut c_buf = [0u8; 32];
-        for (i, v) in buf[65..97].iter().enumerate() {
-            c_buf[i] = *v;
-        }
-
-        let c = Label::from_bytes(c_buf);
-
-        Op::new_add(&a, &b, &c)
+        Op::new_add(&a, &b)
     }
 
     /// `new_mul` creates a new Mul `Op`.
-    pub fn new_mul(a: &Label, b: &Label, c: &Label) -> Result<Op> {
-        if (a == b) || (a == c) || (b == c) {
+    pub fn new_mul(a: &Label, b: &Label) -> Result<Op> {
+        if a == b {
             let msg = "labels are not distinct";
             let source = None;
             let err = Error::new_op(msg, source);
@@ -689,7 +659,6 @@ impl Op {
         let op = Op::Mul {
             a: Box::new(a.to_owned()),
             b: Box::new(b.to_owned()),
-            c: Box::new(c.to_owned()),
         };
 
         Ok(op)
@@ -699,9 +668,8 @@ impl Op {
     pub fn random_mul() -> Result<Op> {
         let a = Label::random()?;
         let b = Label::random()?;
-        let c = Label::random()?;
 
-        Op::new_mul(&a, &b, &c)
+        Op::new_mul(&a, &b)
     }
 
     /// `random_mul_from_rng` creates a random Mul `Op` from a RNG.
@@ -711,9 +679,8 @@ impl Op {
     {
         let a = Label::from_rng(rng)?;
         let b = Label::from_rng(rng)?;
-        let c = Label::from_rng(rng)?;
 
-        Op::new_mul(&a, &b, &c)
+        Op::new_mul(&a, &b)
     }
 
     /// `is_mul` returns if the `Op` is an Mul `Op`.
@@ -729,17 +696,15 @@ impl Op {
         self.validate()?;
 
         match self {
-            Op::Mul { a, b, c } => {
+            Op::Mul { a, b } => {
                 let mut buf = Vec::new();
 
                 let a_buf = a.to_bytes();
                 let b_buf = b.to_bytes();
-                let c_buf = c.to_bytes();
 
                 buf.push(Op::MUL_CODE);
                 buf.extend_from_slice(&a_buf[..]);
                 buf.extend_from_slice(&b_buf[..]);
-                buf.extend_from_slice(&c_buf[..]);
 
                 Ok(buf)
             }
@@ -752,7 +717,7 @@ impl Op {
 
     /// `mul_from_bytes` creates an Mul `Op` from a slice of bytes.
     pub fn mul_from_bytes(buf: &[u8]) -> Result<Op> {
-        if buf.len() != 97 {
+        if buf.len() != 65 {
             let err = Error::new_op("invalid op length", None);
             return Err(err);
         }
@@ -776,82 +741,26 @@ impl Op {
 
         let b = Label::from_bytes(b_buf);
 
-        let mut c_buf = [0u8; 32];
-        for (i, v) in buf[65..97].iter().enumerate() {
-            c_buf[i] = *v;
-        }
-
-        let c = Label::from_bytes(c_buf);
-
-        Op::new_mul(&a, &b, &c)
+        Op::new_mul(&a, &b)
     }
 
-    /// `new_io` creates a new Io `Op`.
-    pub fn new_io(a: &Label, b: &Label, c: &Label) -> Result<Op> {
-        if (a == b) || (a == c) || (b == c) {
-            let msg = "labels are not distinct";
-            let source = None;
-            let err = Error::new_op(msg, source);
-            return Err(err);
-        }
-
-        let op = Op::Io {
-            a: Box::new(a.to_owned()),
-            b: Box::new(b.to_owned()),
-            c: Box::new(c.to_owned()),
-        };
-
-        Ok(op)
+    /// `new_noop` creates a new Noop `Op`.
+    pub fn new_noop() -> Op {
+        Op::Noop
     }
 
-    /// `random_io` creates a random Io `Op`.
-    pub fn random_io() -> Result<Op> {
-        let a = Label::random()?;
-        let b = Label::random()?;
-        let c = Label::random()?;
-
-        Op::new_io(&a, &b, &c)
-    }
-
-    /// `random_io_from_rng` creates a random Io `Op` from a RNG.
-    pub fn random_io_from_rng<R>(rng: &mut R) -> Result<Op>
-    where
-        R: RngCore,
-    {
-        let a = Label::from_rng(rng)?;
-        let b = Label::from_rng(rng)?;
-        let c = Label::from_rng(rng)?;
-
-        Op::new_io(&a, &b, &c)
-    }
-
-    /// `is_io` returns if the `Op` is an Io `Op`.
-    pub fn is_io(&self) -> bool {
+    /// `is_noop` returns if the `Op` is an Noop `Op`.
+    pub fn is_noop(&self) -> bool {
         match self {
-            Op::Io { .. } => true,
+            Op::Noop => true,
             _ => false,
         }
     }
 
-    /// `io_to_bytes` converts the Io `Op` to a vector of bytes.
-    pub fn io_to_bytes(&self) -> Result<Vec<u8>> {
-        self.validate()?;
-
+    /// `noop_to_bytes` converts the Noop `Op` to a vector of bytes.
+    pub fn noop_to_bytes(&self) -> Result<Vec<u8>> {
         match self {
-            Op::Io { a, b, c } => {
-                let mut buf = Vec::new();
-
-                let a_buf = a.to_bytes();
-                let b_buf = b.to_bytes();
-                let c_buf = c.to_bytes();
-
-                buf.push(Op::IO_CODE);
-                buf.extend_from_slice(&a_buf[..]);
-                buf.extend_from_slice(&b_buf[..]);
-                buf.extend_from_slice(&c_buf[..]);
-
-                Ok(buf)
-            }
+            Op::Noop => Ok(vec![Op::NOOP_CODE]),
             _ => {
                 let err = Error::new_op("invalid op", None);
                 Err(err)
@@ -859,117 +768,19 @@ impl Op {
         }
     }
 
-    /// `io_from_bytes` creates an Io `Op` from a slice of bytes.
-    pub fn io_from_bytes(buf: &[u8]) -> Result<Op> {
-        if buf.len() != 97 {
+    /// `noop_from_bytes` creates an Noop `Op` from a slice of bytes.
+    pub fn noop_from_bytes(buf: &[u8]) -> Result<Op> {
+        if buf.len() != 1 {
             let err = Error::new_op("invalid op length", None);
             return Err(err);
         }
 
-        if buf[0] != Op::IO_CODE {
+        if buf[0] != Op::NOOP_CODE {
             let err = Error::new_op("invalid op code", None);
             return Err(err);
         }
 
-        let mut a_buf = [0u8; 32];
-        for (i, v) in buf[1..33].iter().enumerate() {
-            a_buf[i] = *v;
-        }
-
-        let a = Label::from_bytes(a_buf);
-
-        let mut b_buf = [0u8; 32];
-        for (i, v) in buf[33..65].iter().enumerate() {
-            b_buf[i] = *v;
-        }
-
-        let b = Label::from_bytes(b_buf);
-
-        let mut c_buf = [0u8; 32];
-        for (i, v) in buf[65..97].iter().enumerate() {
-            c_buf[i] = *v;
-        }
-
-        let c = Label::from_bytes(c_buf);
-
-        Op::new_io(&a, &b, &c)
-    }
-
-    /// `new_idx` creates a new Idx `Op`.
-    pub fn new_idx(a: &Label) -> Op {
-        Op::Idx {
-            a: Box::new(a.to_owned()),
-        }
-    }
-
-    /// `random_idx` creates a random Idx `Op`.
-    pub fn random_idx() -> Result<Op> {
-        let a = Label::random()?;
-        let op = Op::new_idx(&a);
-
-        Ok(op)
-    }
-
-    /// `random_idx_from_rng` creates a random Idx `Op` from a RNG.
-    pub fn random_idx_from_rng<R>(rng: &mut R) -> Result<Op>
-    where
-        R: RngCore,
-    {
-        let a = Label::from_rng(rng)?;
-        let op = Op::new_idx(&a);
-
-        Ok(op)
-    }
-
-    /// `is_idx` returns if the `Op` is an Idx `Op`.
-    pub fn is_idx(&self) -> bool {
-        match self {
-            Op::Idx { .. } => true,
-            _ => false,
-        }
-    }
-
-    /// `idx_to_bytes` converts the Idx `Op` to a vector of bytes.
-    pub fn idx_to_bytes(&self) -> Result<Vec<u8>> {
-        self.validate()?;
-
-        match self {
-            Op::Idx { a } => {
-                let mut buf = Vec::new();
-
-                let a_buf = a.to_bytes();
-
-                buf.push(Op::IDX_CODE);
-                buf.extend_from_slice(&a_buf[..]);
-
-                Ok(buf)
-            }
-            _ => {
-                let err = Error::new_op("invalid op", None);
-                Err(err)
-            }
-        }
-    }
-
-    /// `idx_from_bytes` creates an Idx `Op` from a slice of bytes.
-    pub fn idx_from_bytes(buf: &[u8]) -> Result<Op> {
-        if buf.len() != 33 {
-            let err = Error::new_op("invalid op length", None);
-            return Err(err);
-        }
-
-        if buf[0] != Op::IDX_CODE {
-            let err = Error::new_op("invalid op code", None);
-            return Err(err);
-        }
-
-        let mut a_buf = [0u8; 32];
-        for (i, v) in buf[1..].iter().enumerate() {
-            a_buf[i] = *v;
-        }
-
-        let a = Label::from_bytes(a_buf);
-        let op = Op::new_idx(&a);
+        let op = Op::new_noop();
 
         Ok(op)
     }
@@ -978,14 +789,14 @@ impl Op {
     pub fn random() -> Result<Op> {
         let idx = random_u32()?;
 
-        if idx >= (idx / 4) * 3 {
-            Op::random_add()
-        } else if idx >= idx / 2 {
+        let max = u32::max_value();
+
+        if idx >= (max / 3) * 2 {
             Op::random_mul()
-        } else if idx >= idx / 4 {
-            Op::random_io()
+        } else if idx >= max / 3 {
+            Op::random_add()
         } else {
-            Op::random_idx()
+            Ok(Op::new_noop())
         }
     }
 
@@ -996,14 +807,14 @@ impl Op {
     {
         let idx = random_u32()?;
 
-        if idx >= (idx / 4) * 3 {
-            Op::random_add_from_rng(rng)
-        } else if idx >= idx / 2 {
+        let max = u32::max_value();
+
+        if idx >= (max / 3) * 2 {
             Op::random_mul_from_rng(rng)
-        } else if idx >= idx / 4 {
-            Op::random_io_from_rng(rng)
+        } else if idx >= max / 3 {
+            Op::random_add_from_rng(rng)
         } else {
-            Op::random_idx_from_rng(rng)
+            Ok(Op::new_noop())
         }
     }
 
@@ -1012,14 +823,11 @@ impl Op {
         let mut buf = Vec::new();
 
         match self {
-            Op::Add { a, b, c } | Op::Mul { a, b, c } | Op::Io { a, b, c } => {
+            Op::Add { a, b } | Op::Mul { a, b } => {
                 buf.push(&*(*a));
                 buf.push(&*(*b));
-                buf.push(&*(*c));
             }
-            Op::Idx { a } => {
-                buf.push(&*(*a));
-            }
+            Op::Noop => {}
         }
 
         buf
@@ -1028,25 +836,23 @@ impl Op {
     /// `to_bytes` converts the `Op` to a vector of bytes.
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
         match self {
+            Op::Noop => self.noop_to_bytes(),
             Op::Add { .. } => self.add_to_bytes(),
             Op::Mul { .. } => self.mul_to_bytes(),
-            Op::Io { .. } => self.io_to_bytes(),
-            Op::Idx { .. } => self.idx_to_bytes(),
         }
     }
 
     /// `from_bytes` creates an `Op` from a slice of bytes.
     pub fn from_bytes(buf: &[u8]) -> Result<Op> {
-        if buf.len() > 97 {
+        if buf.len() > 65 {
             let err = Error::new_op("invalid op length", None);
             return Err(err);
         }
 
         match buf[0] {
+            Op::NOOP_CODE => Op::noop_from_bytes(buf),
             Op::ADD_CODE => Op::add_from_bytes(buf),
             Op::MUL_CODE => Op::mul_from_bytes(buf),
-            Op::IO_CODE => Op::io_from_bytes(buf),
-            Op::IDX_CODE => Op::idx_from_bytes(buf),
             _ => {
                 let err = Error::new_op("invalid op code", None);
                 Err(err)
@@ -1057,8 +863,8 @@ impl Op {
     /// `validate` validates an `Op`.
     pub fn validate(&self) -> Result<()> {
         match self {
-            Op::Add { a, b, c } | Op::Mul { a, b, c } | Op::Io { a, b, c } => {
-                if (*a == *b) || (*a == *c) || (*b == *c) {
+            Op::Add { a, b } | Op::Mul { a, b } => {
+                if *a == *b {
                     let msg = "labels are not distinct";
                     let source = None;
                     let err = Error::new_op(msg, source);
@@ -1074,9 +880,46 @@ impl Op {
 
 impl Default for Op {
     fn default() -> Op {
-        Op::Idx {
-            a: Box::new(Label::default()),
+        Op::Noop
+    }
+}
+
+#[test]
+fn test_op_noop_bytes() {
+    let op_a = Op::new_noop();
+    let res = op_a.to_bytes();
+    assert!(res.is_ok());
+
+    let buf = res.unwrap();
+    let res = Op::noop_from_bytes(&buf);
+    assert!(res.is_ok());
+
+    let op_b = res.unwrap();
+    assert_eq!(op_a, op_b);
+
+    let invalid_length_buf = [0u8; 2];
+    let res = Op::noop_from_bytes(&invalid_length_buf[..]);
+    assert!(res.is_err());
+
+    match res {
+        Err(err) => {
+            let msg: String = "invalid op length".into();
+            assert_eq!(err.msg, msg)
         }
+        _ => panic!("expected 'invalid op length'"),
+    }
+
+    let mut invalid_code_buf = [0u8; 1];
+    invalid_code_buf[0] = Op::NOOP_CODE + 1;
+    let res = Op::noop_from_bytes(&invalid_code_buf[..]);
+    assert!(res.is_err());
+
+    match res {
+        Err(err) => {
+            let msg: String = "invalid op code".into();
+            assert_eq!(err.msg, msg)
+        }
+        _ => panic!("expected 'invalid op code'"),
     }
 }
 
@@ -1090,12 +933,7 @@ fn test_op_new_add() {
             b = Label::random().unwrap();
         }
 
-        let mut c = Label::random().unwrap();
-        while (c == a) || (c == b) {
-            c = Label::random().unwrap();
-        }
-
-        let res = Op::new_add(&a, &b, &c);
+        let res = Op::new_add(&a, &b);
         assert!(res.is_ok());
 
         let valid_op = res.unwrap();
@@ -1104,8 +942,7 @@ fn test_op_new_add() {
 
         let invalid_op = Op::Add {
             a: Box::new(a.clone()),
-            b: Box::new(b.clone()),
-            c: Box::new(b.clone()),
+            b: Box::new(a.clone()),
         };
 
         let res = invalid_op.validate();
@@ -1139,7 +976,7 @@ fn test_op_add_bytes() {
         let op_b = res.unwrap();
         assert_eq!(op_a, op_b);
 
-        let invalid_length_buf = [0u8; 98];
+        let invalid_length_buf = [0u8; 66];
         let res = Op::add_from_bytes(&invalid_length_buf[..]);
         assert!(res.is_err());
 
@@ -1151,7 +988,7 @@ fn test_op_add_bytes() {
             _ => panic!("expected 'invalid op length'"),
         }
 
-        let mut invalid_code_buf = [0u8; 97];
+        let mut invalid_code_buf = [0u8; 65];
         invalid_code_buf[0] = Op::ADD_CODE + 1;
         let res = Op::add_from_bytes(&invalid_code_buf[..]);
         assert!(res.is_err());
@@ -1176,12 +1013,7 @@ fn test_op_new_mul() {
             b = Label::random().unwrap();
         }
 
-        let mut c = Label::random().unwrap();
-        while (c == a) || (c == b) {
-            c = Label::random().unwrap();
-        }
-
-        let res = Op::new_mul(&a, &b, &c);
+        let res = Op::new_mul(&a, &b);
         assert!(res.is_ok());
 
         let valid_op = res.unwrap();
@@ -1190,8 +1022,7 @@ fn test_op_new_mul() {
 
         let invalid_op = Op::Mul {
             a: Box::new(a.clone()),
-            b: Box::new(b.clone()),
-            c: Box::new(b.clone()),
+            b: Box::new(a.clone()),
         };
 
         let res = invalid_op.validate();
@@ -1225,7 +1056,7 @@ fn test_op_mul_bytes() {
         let op_b = res.unwrap();
         assert_eq!(op_a, op_b);
 
-        let invalid_length_buf = [0u8; 98];
+        let invalid_length_buf = [0u8; 66];
         let res = Op::mul_from_bytes(&invalid_length_buf[..]);
         assert!(res.is_err());
 
@@ -1237,7 +1068,7 @@ fn test_op_mul_bytes() {
             _ => panic!("expected 'invalid op length'"),
         }
 
-        let mut invalid_code_buf = [0u8; 97];
+        let mut invalid_code_buf = [0u8; 65];
         invalid_code_buf[0] = Op::MUL_CODE + 1;
         let res = Op::mul_from_bytes(&invalid_code_buf[..]);
         assert!(res.is_err());
@@ -1253,152 +1084,24 @@ fn test_op_mul_bytes() {
 }
 
 #[test]
-fn test_op_new_io() {
-    for _ in 0..10 {
-        let a = Label::random().unwrap();
-
-        let mut b = Label::random().unwrap();
-        while b == a {
-            b = Label::random().unwrap();
-        }
-
-        let mut c = Label::random().unwrap();
-        while (c == a) || (c == b) {
-            c = Label::random().unwrap();
-        }
-
-        let res = Op::new_io(&a, &b, &c);
-        assert!(res.is_ok());
-
-        let valid_op = res.unwrap();
-        let res = valid_op.validate();
-        assert!(res.is_ok());
-
-        let invalid_op = Op::Io {
-            a: Box::new(a.clone()),
-            b: Box::new(b.clone()),
-            c: Box::new(b.clone()),
-        };
-        let res = invalid_op.validate();
-        assert!(res.is_err());
-    }
-}
-
-#[test]
-fn test_op_random_io() {
-    for _ in 0..10 {
-        let op = Op::random_io().unwrap();
-        let res = op.validate();
-        assert!(res.is_ok());
-
-        let is_io = op.is_io();
-        assert!(is_io)
-    }
-}
-
-#[test]
-fn test_op_io_bytes() {
-    for _ in 0..10 {
-        let op_a = Op::random_io().unwrap();
-        let res = op_a.to_bytes();
-        assert!(res.is_ok());
-
-        let buf = res.unwrap();
-        let res = Op::io_from_bytes(&buf);
-        assert!(res.is_ok());
-
-        let op_b = res.unwrap();
-        assert_eq!(op_a, op_b);
-
-        let invalid_length_buf = [0u8; 98];
-        let res = Op::io_from_bytes(&invalid_length_buf[..]);
-        assert!(res.is_err());
-
-        match res {
-            Err(err) => {
-                let msg: String = "invalid op length".into();
-                assert_eq!(err.msg, msg)
-            }
-            _ => panic!("expected 'invalid op length'"),
-        }
-
-        let mut invalid_code_buf = [0u8; 97];
-        invalid_code_buf[0] = Op::IO_CODE + 1;
-        let res = Op::io_from_bytes(&invalid_code_buf[..]);
-        assert!(res.is_err());
-
-        match res {
-            Err(err) => {
-                let msg: String = "invalid op code".into();
-                assert_eq!(err.msg, msg)
-            }
-            _ => panic!("expected 'invalid op code'"),
-        }
-    }
-}
-
-#[test]
-fn test_op_random_idx() {
-    for _ in 0..10 {
-        let op = Op::random_idx().unwrap();
-        let res = op.validate();
-        assert!(res.is_ok());
-
-        let is_idx = op.is_idx();
-        assert!(is_idx)
-    }
-}
-
-#[test]
-fn test_op_idx_bytes() {
-    for _ in 0..10 {
-        let op_a = Op::random_idx().unwrap();
-        let res = op_a.to_bytes();
-        assert!(res.is_ok());
-
-        let buf = res.unwrap();
-        let res = Op::idx_from_bytes(&buf);
-        assert!(res.is_ok());
-
-        let op_b = res.unwrap();
-        assert_eq!(op_a, op_b);
-
-        let invalid_length_buf = [0u8; 34];
-        let res = Op::idx_from_bytes(&invalid_length_buf[..]);
-        assert!(res.is_err());
-
-        match res {
-            Err(err) => {
-                let msg: String = "invalid op length".into();
-                assert_eq!(err.msg, msg)
-            }
-            _ => panic!("expected 'invalid op length'"),
-        }
-
-        let mut invalid_code_buf = [0u8; 33];
-        invalid_code_buf[0] = Op::IDX_CODE + 1;
-        let res = Op::idx_from_bytes(&invalid_code_buf[..]);
-        assert!(res.is_err());
-
-        match res {
-            Err(err) => {
-                let msg: String = "invalid op code".into();
-                assert_eq!(err.msg, msg)
-            }
-            _ => panic!("expected 'invalid op code'"),
-        }
-    }
-}
-
-#[test]
 fn test_op_bytes() {
+    let noop_a = Op::new_noop();
+
+    let res = noop_a.to_bytes();
+    assert!(res.is_ok());
+
+    let noop_buf = res.unwrap();
+    let res = Op::from_bytes(&noop_buf);
+    assert!(res.is_ok());
+
+    let noop_b = res.unwrap();
+    assert_eq!(noop_a, noop_b);
+
     for _ in 0..10 {
         let add_a = Op::random_add().unwrap();
         let mul_a = Op::random_mul().unwrap();
-        let io_a = Op::random_io().unwrap();
-        let idx_a = Op::random_idx().unwrap();
 
-        let invalid_length_buf = [0u8; 98];
+        let invalid_length_buf = [0u8; 66];
         let res = Op::from_bytes(&invalid_length_buf[..]);
         assert!(res.is_err());
 
@@ -1410,7 +1113,7 @@ fn test_op_bytes() {
             _ => panic!("expected 'invalid op length'"),
         }
 
-        let mut invalid_code_buf = [0u8; 97];
+        let mut invalid_code_buf = [0u8; 65];
         invalid_code_buf[0] = 255;
         let res = Op::from_bytes(&invalid_code_buf[..]);
         assert!(res.is_err());
@@ -1442,47 +1145,24 @@ fn test_op_bytes() {
 
         let mul_b = res.unwrap();
         assert_eq!(mul_a, mul_b);
-
-        let res = io_a.to_bytes();
-        assert!(res.is_ok());
-
-        let io_buf = res.unwrap();
-        let res = Op::from_bytes(&io_buf);
-        assert!(res.is_ok());
-
-        let io_b = res.unwrap();
-        assert_eq!(io_a, io_b);
-
-        let res = idx_a.to_bytes();
-        assert!(res.is_ok());
-
-        let idx_buf = res.unwrap();
-        let res = Op::from_bytes(&idx_buf);
-        assert!(res.is_ok());
-
-        let idx_b = res.unwrap();
-        assert_eq!(idx_a, idx_b);
     }
 }
 
 #[test]
 fn test_op_validate() {
+    let valid_noop = Op::new_noop();
+
+    let res = valid_noop.validate();
+    assert!(res.is_ok());
+
     for _ in 0..10 {
         let valid_add = Op::random_add().unwrap();
         let valid_mul = Op::random_mul().unwrap();
-        let valid_io = Op::random_io().unwrap();
-        let valid_idx = Op::random_idx().unwrap();
 
         let res = valid_add.validate();
         assert!(res.is_ok());
 
         let res = valid_mul.validate();
-        assert!(res.is_ok());
-
-        let res = valid_io.validate();
-        assert!(res.is_ok());
-
-        let res = valid_idx.validate();
         assert!(res.is_ok());
 
         let label = Label::random().unwrap();
@@ -1494,7 +1174,6 @@ fn test_op_validate() {
         let invalid_add = Op::Add {
             a: Box::new(label.clone()),
             b: Box::new(label.clone()),
-            c: Box::new(other_label.clone()),
         };
 
         let res = invalid_add.validate();
@@ -1503,19 +1182,9 @@ fn test_op_validate() {
         let invalid_mul = Op::Mul {
             a: Box::new(label.clone()),
             b: Box::new(label.clone()),
-            c: Box::new(other_label.clone()),
         };
 
         let res = invalid_mul.validate();
-        assert!(res.is_err());
-
-        let invalid_io = Op::Io {
-            a: Box::new(label.clone()),
-            b: Box::new(label.clone()),
-            c: Box::new(other_label.clone()),
-        };
-
-        let res = invalid_io.validate();
         assert!(res.is_err());
     }
 }
@@ -1560,6 +1229,12 @@ impl Node {
         Node::new(nonce, op, value)
     }
 
+    /// `random_noop` creates a new random `Node` with Noop `Op`.
+    pub fn random_noop() -> Result<Node> {
+        let op = Op::new_noop();
+        Node::random_with_op(&op)
+    }
+
     /// `random_add` creates a new random `Node` with Add `Op`.
     pub fn random_add() -> Result<Node> {
         let op = Op::random_add()?;
@@ -1569,18 +1244,6 @@ impl Node {
     /// `random_mul` creates a new random `Node` with Mul `Op`.
     pub fn random_mul() -> Result<Node> {
         let op = Op::random_mul()?;
-        Node::random_with_op(&op)
-    }
-
-    /// `random_io` creates a new random `Node` with Io `Op`.
-    pub fn random_io() -> Result<Node> {
-        let op = Op::random_io()?;
-        Node::random_with_op(&op)
-    }
-
-    /// `random_idx` creates a new random `Node` with Idx `Op`.
-    pub fn random_idx() -> Result<Node> {
-        let op = Op::random_idx()?;
         Node::random_with_op(&op)
     }
 
@@ -1655,7 +1318,7 @@ impl Node {
 
     /// `from_bytes` creates a new `Node` from a slice of bytes.
     pub fn from_bytes(buf: &[u8]) -> Result<Node> {
-        if buf.len() < 109 {
+        if buf.len() < 45 {
             let err = Error::new_io("invalid length", None);
             return Err(err);
         }
@@ -1770,7 +1433,6 @@ fn test_node_new() {
         let invalid_op = Op::Mul {
             a: Box::new(label.clone()),
             b: Box::new(label.clone()),
-            c: Box::new(label),
         };
 
         let res = Node::new(nonce, &invalid_op, source);
@@ -1822,7 +1484,6 @@ fn test_node_validate() {
         let invalid_op = Op::Mul {
             a: Box::new(label.clone()),
             b: Box::new(label.clone()),
-            c: Box::new(label),
         };
 
         let mut invalid_op_node = node.clone();
@@ -1918,7 +1579,7 @@ impl Circuit {
         self.validate()?;
         node.validate()?;
 
-        if !node.op.is_io() {
+        if !node.op.is_noop() {
             let err = Error::new_circuit("invalid op", None);
             return Err(err);
         }
@@ -1955,7 +1616,7 @@ impl Circuit {
     pub fn create_nondet_input(&mut self) -> Result<Node> {
         self.validate()?;
 
-        let node = Node::random_io()?;
+        let node = Node::random_noop()?;
 
         self.insert_nondet_input(node.clone())?;
 
@@ -1967,7 +1628,7 @@ impl Circuit {
         self.validate()?;
         node.validate()?;
 
-        if !node.op.is_io() {
+        if !node.op.is_noop() {
             let err = Error::new_circuit("invalid op", None);
             return Err(err);
         }
@@ -2005,7 +1666,7 @@ impl Circuit {
         self.validate()?;
         node.validate()?;
 
-        if !node.op.is_io() {
+        if !node.op.is_noop() {
             let err = Error::new_circuit("invalid op", None);
             return Err(err);
         }
@@ -2048,6 +1709,11 @@ impl Circuit {
             || self.lookup_public_output(&node.label)
         {
             let err = Error::new_circuit("invalid node", None);
+            return Err(err);
+        }
+
+        if node.op.is_noop() {
+            let err = Error::new_circuit("invalid op", None);
             return Err(err);
         }
 
@@ -2268,7 +1934,7 @@ impl Circuit {
                 return Err(err);
             }
 
-            if self.nodes.get(&label).unwrap().op.is_io() {
+            if self.nodes.get(&label).unwrap().op.is_noop() {
                 let err = Error::new_circuit("invalid op", None);
                 return Err(err);
             }
@@ -2297,7 +1963,7 @@ impl Circuit {
                 return Err(err);
             }
 
-            if self.nodes.get(&label).unwrap().op.is_io() {
+            if self.nodes.get(&label).unwrap().op.is_noop() {
                 let err = Error::new_circuit("invalid op", None);
                 return Err(err);
             }
