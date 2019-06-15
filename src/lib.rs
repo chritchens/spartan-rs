@@ -1882,7 +1882,7 @@ impl Circuit {
 
     /// `insert_node` inserts a `Node` in the `Circuit`. The `Node` `Op`
     /// labels are expected to be keys in the current `Circuit`.
-    pub fn insert_node(&mut self, node: Node) -> Result<()> {
+    fn insert_node(&mut self, node: Node) -> Result<()> {
         self.validate()?;
         node.validate()?;
 
@@ -2036,6 +2036,22 @@ impl Circuit {
         } else {
             self.get_node(label)
         }
+    }
+
+    /// `insert_internal_node` inserts an internal `Node` in the `Circuit`.
+    pub fn insert_internal_node(&mut self, node: Node) -> Result<()> {
+        self.validate()?;
+        node.validate()?;
+
+        if self.lookup_public_input(&node.label)
+            || self.lookup_nondet_input(&node.label)
+            || self.lookup_public_output(&node.label)
+        {
+            let err = Error::new_circuit("invalid node", None);
+            return Err(err);
+        }
+
+        self.insert_node(node)
     }
 
     /// `to_bytes` converts the `Circuit` to a vector of bytes.
