@@ -2033,14 +2033,45 @@ impl Circuit {
             return Err(err);
         }
 
+        for label in self.public_inputs.clone() {
+            if !self.nodes.contains_key(&label) {
+                let err = Error::new_circuit("node not found", None);
+                return Err(err);
+            }
+
+            if self.nodes.get(&label).unwrap().op.is_io() {
+                let err = Error::new_circuit("invalid op", None);
+                return Err(err);
+            }
+        }
+
         if self.nondet_inputs.len() != self.nondet_inputs_len as usize {
             let err = Error::new_circuit("invalid length", None);
             return Err(err);
         }
 
+        for label in self.nondet_inputs.clone() {
+            if !self.nodes.contains_key(&label) {
+                let err = Error::new_circuit("node not found", None);
+                return Err(err);
+            }
+        }
+
         if self.public_outputs.len() != self.public_outputs_len as usize {
             let err = Error::new_circuit("invalid length", None);
             return Err(err);
+        }
+
+        for label in self.public_outputs.clone() {
+            if !self.nodes.contains_key(&label) {
+                let err = Error::new_circuit("node not found", None);
+                return Err(err);
+            }
+
+            if self.nodes.get(&label).unwrap().op.is_io() {
+                let err = Error::new_circuit("invalid op", None);
+                return Err(err);
+            }
         }
 
         if self.nodes.len() != self.nodes_len as usize {
