@@ -1012,16 +1012,14 @@ impl Op {
         let mut buf = Vec::new();
 
         match self {
-            Op::Add { a, b, c } |
-            Op::Mul { a, b, c } |
-            Op::Io { a, b, c} => {
+            Op::Add { a, b, c } | Op::Mul { a, b, c } | Op::Io { a, b, c } => {
                 buf.push(&*(*a));
                 buf.push(&*(*b));
                 buf.push(&*(*c));
-            },
+            }
             Op::Idx { a } => {
                 buf.push(&*(*a));
-            },
+            }
         }
 
         buf
@@ -1549,6 +1547,43 @@ impl Node {
         Ok(node)
     }
 
+    /// `random_with_op` creates a new random `Node` with a specific `Op`.
+    pub fn random_with_op(op: &Op) -> Result<Node> {
+        let nonce = random_u32()?;
+        let value = if random_bool()? {
+            let value = Value::random()?;
+            Some(value)
+        } else {
+            None
+        };
+
+        Node::new(nonce, op, value)
+    }
+
+    /// `random_add` creates a new random `Node` with Add `Op`.
+    pub fn random_add() -> Result<Node> {
+        let op = Op::random_add()?;
+        Node::random_with_op(&op)
+    }
+
+    /// `random_mul` creates a new random `Node` with Mul `Op`.
+    pub fn random_mul() -> Result<Node> {
+        let op = Op::random_mul()?;
+        Node::random_with_op(&op)
+    }
+
+    /// `random_io` creates a new random `Node` with Io `Op`.
+    pub fn random_io() -> Result<Node> {
+        let op = Op::random_io()?;
+        Node::random_with_op(&op)
+    }
+
+    /// `random_idx` creates a new random `Node` with Idx `Op`.
+    pub fn random_idx() -> Result<Node> {
+        let op = Op::random_idx()?;
+        Node::random_with_op(&op)
+    }
+
     /// `random` creates a new random `Node`.
     pub fn random() -> Result<Node> {
         let mut rng = OsRng::new().map_err(|e| {
@@ -1849,6 +1884,7 @@ impl Circuit {
     /// labels are expected to be keys in the current `Circuit`.
     pub fn insert_node(&mut self, node: Node) -> Result<()> {
         self.validate()?;
+        node.validate()?;
 
         if self.lookup_node(&node.label) {
             let err = Error::new_circuit("node already found", None);
@@ -1875,6 +1911,131 @@ impl Circuit {
     /// `get_node` gets a `Node` from the `Circuit`.
     pub fn get_node(&self, label: &Label) -> Option<&Node> {
         self.nodes.get(label)
+    }
+
+    /// `insert_public_input` inserts a `Node` in the `Circuit` public inputs.
+    pub fn insert_public_input(&mut self, node: Node) -> Result<()> {
+        self.validate()?;
+        node.validate()?;
+
+        if !node.op.is_io() {
+            let err = Error::new_circuit("invalid op", None);
+            return Err(err);
+        }
+
+        let label = node.label.clone();
+
+        if self.lookup_public_input(&label) {
+            let err = Error::new_circuit("already found", None);
+            return Err(err);
+        }
+
+        self.insert_node(node)?;
+
+        self.public_inputs.push(label);
+
+        Ok(())
+    }
+
+    /// `lookup_public_input` finds a public input `Node` in the `Circuit`.
+    pub fn lookup_public_input(&self, label: &Label) -> bool {
+        self.public_inputs.contains(label)
+    }
+
+    /// `get_public_input` gets a public input `Node` from the `Circuit`.
+    pub fn get_public_input(&self, label: &Label) -> Option<&Node> {
+        if !self.lookup_public_input(label) {
+            None
+        } else {
+            self.get_node(label)
+        }
+    }
+
+    /// `create_nondet_input` creates a nondeterministic input `Node` in the `Circuit`.
+    pub fn create_nondet_input(&mut self) -> Result<Node> {
+        self.validate()?;
+
+        let node = Node::random_io()?;
+
+        self.insert_nondet_input(node.clone())?;
+
+        Ok(node)
+    }
+
+    /// `insert_nondet_input` inserts a `Node` in the `Circuit` nondet inputs.
+    pub fn insert_nondet_input(&mut self, node: Node) -> Result<()> {
+        self.validate()?;
+        node.validate()?;
+
+        if !node.op.is_io() {
+            let err = Error::new_circuit("invalid op", None);
+            return Err(err);
+        }
+
+        let label = node.label.clone();
+
+        if self.lookup_nondet_input(&label) {
+            let err = Error::new_circuit("already found", None);
+            return Err(err);
+        }
+
+        self.insert_node(node)?;
+
+        self.nondet_inputs.push(label);
+
+        Ok(())
+    }
+
+    /// `lookup_nondet_input` finds a nondet input `Node` in the `Circuit`.
+    pub fn lookup_nondet_input(&self, label: &Label) -> bool {
+        self.nondet_inputs.contains(label)
+    }
+
+    /// `get_nondet_input` gets a nondet input `Node` from the `Circuit`.
+    pub fn get_nondet_input(&self, label: &Label) -> Option<&Node> {
+        if !self.lookup_nondet_input(label) {
+            None
+        } else {
+            self.get_node(label)
+        }
+    }
+
+    /// `insert_public_output` inserts a `Node` in the `Circuit` public outputs.
+    pub fn insert_public_output(&mut self, node: Node) -> Result<()> {
+        self.validate()?;
+        node.validate()?;
+
+        if !node.op.is_io() {
+            let err = Error::new_circuit("invalid op", None);
+            return Err(err);
+        }
+
+        let label = node.label.clone();
+
+        if self.lookup_public_output(&label) {
+            let err = Error::new_circuit("already found", None);
+            return Err(err);
+        }
+
+        self.insert_node(node)?;
+
+        self.public_outputs.push(label);
+
+        Ok(())
+    }
+
+    /// `lookup_public_output` finds a public output `Node` in the `Circuit`.
+    pub fn lookup_public_output(&self, label: &Label) -> bool {
+        self.public_outputs.contains(label)
+    }
+
+    /// `get_public_output` gets a public output `Node` from the `Circuit`.
+    pub fn get_public_output(&self, label: &Label) -> Option<&Node> {
+        if !self.lookup_public_output(label) {
+            None
+        } else {
+            self.get_node(label)
+        }
     }
 
     /// `to_bytes` converts the `Circuit` to a vector of bytes.
