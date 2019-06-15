@@ -1007,6 +1007,26 @@ impl Op {
         }
     }
 
+    /// `labels` returns the `Op` labels.
+    pub fn labels(&self) -> Vec<&Label> {
+        let mut buf = Vec::new();
+
+        match self {
+            Op::Add { a, b, c } |
+            Op::Mul { a, b, c } |
+            Op::Io { a, b, c} => {
+                buf.push(&*(*a));
+                buf.push(&*(*b));
+                buf.push(&*(*c));
+            },
+            Op::Idx { a } => {
+                buf.push(&*(*a));
+            },
+        }
+
+        buf
+    }
+
     /// `to_bytes` converts the `Op` to a vector of bytes.
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
         match self {
@@ -1823,6 +1843,38 @@ impl Circuit {
         }
 
         Ok(id)
+    }
+
+    /// `insert_node` inserts a `Node` in the `Circuit`. The `Node` `Op`
+    /// labels are expected to be keys in the current `Circuit`.
+    pub fn insert_node(&mut self, node: Node) -> Result<()> {
+        self.validate()?;
+
+        if self.lookup_node(&node.label) {
+            let err = Error::new_circuit("node already found", None);
+            return Err(err);
+        }
+
+        for label in node.op.labels() {
+            if !self.lookup_node(label) {
+                let err = Error::new_circuit("node not found", None);
+                return Err(err);
+            }
+        }
+
+        self.nodes.insert(node.label.clone(), node);
+
+        Ok(())
+    }
+
+    /// `lookup_node` finds a `Node` in the `Circuit`.
+    pub fn lookup_node(&self, label: &Label) -> bool {
+        self.nodes.contains_key(label)
+    }
+
+    /// `get_node` gets a `Node` from the `Circuit`.
+    pub fn get_node(&self, label: &Label) -> Option<&Node> {
+        self.nodes.get(label)
     }
 
     /// `to_bytes` converts the `Circuit` to a vector of bytes.
