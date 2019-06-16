@@ -1520,9 +1520,16 @@ impl Circuit {
     /// `new` creates a new `Circuit`.
     pub fn new() -> Result<Circuit> {
         let mut circuit = Circuit::default();
-        circuit.id = circuit.calc_id()?;
+        circuit.update_id()?;
 
         Ok(circuit)
+    }
+
+    /// `update_id` updates the `Circuit` id.
+    pub fn update_id(&mut self) -> Result<()> {
+        self.id = self.calc_id()?;
+
+        Ok(())
     }
 
     /// `calc_id` calculates the `Circuit` id.
@@ -1539,6 +1546,31 @@ impl Circuit {
         }
 
         Ok(id)
+    }
+
+    /// `public_inputs_len` returns the length of the `Circuit` public inputs.
+    pub fn public_inputs_len(&self) -> u32 {
+        self.public_inputs_len
+    }
+
+    /// `nondet_inputs_len` returns the length of the `Circuit` nondet inputs.
+    pub fn nondet_inputs_len(&self) -> u32 {
+        self.nondet_inputs_len
+    }
+
+    /// `public_outputs_len` returns the length of the `Circuit` public outputs.
+    pub fn public_outputs_len(&self) -> u32 {
+        self.public_outputs_len
+    }
+
+    /// `nodes_len` returns the length of the `Circuit` nodes.
+    pub fn nodes_len(&self) -> u32 {
+        self.nodes_len
+    }
+
+    /// `internal_nodes_len` returns the length of the `Circuit` internal nodes.
+    pub fn internal_nodes_len(&self) -> u32 {
+        self.nodes_len - self.public_inputs_len - self.nondet_inputs_len - self.public_outputs_len
     }
 
     /// `insert_node` inserts a `Node` in the `Circuit`. The `Node` `Op`
@@ -1562,6 +1594,8 @@ impl Circuit {
         self.nodes.insert(node.label.clone(), node);
 
         self.nodes_len += 1;
+
+        self.update_id()?;
 
         Ok(())
     }
@@ -1598,6 +1632,8 @@ impl Circuit {
         self.public_inputs.push(label);
 
         self.public_inputs_len += 1;
+
+        self.update_id()?;
 
         Ok(())
     }
@@ -1650,6 +1686,8 @@ impl Circuit {
 
         self.nondet_inputs_len += 1;
 
+        self.update_id()?;
+
         Ok(())
     }
 
@@ -1689,6 +1727,8 @@ impl Circuit {
         self.public_outputs.push(label);
 
         self.public_outputs_len += 1;
+
+        self.update_id()?;
 
         Ok(())
     }
@@ -1942,7 +1982,7 @@ impl Circuit {
                 return Err(err);
             }
 
-            if self.nodes.get(&label).unwrap().op.is_noop() {
+            if !self.nodes.get(&label).unwrap().op.is_noop() {
                 let err = Error::new_circuit("invalid op", None);
                 return Err(err);
             }
@@ -1956,6 +1996,11 @@ impl Circuit {
         for label in self.nondet_inputs.clone() {
             if !self.nodes.contains_key(&label) {
                 let err = Error::new_circuit("node not found", None);
+                return Err(err);
+            }
+
+            if !self.nodes.get(&label).unwrap().op.is_noop() {
+                let err = Error::new_circuit("invalid op", None);
                 return Err(err);
             }
         }
@@ -2004,6 +2049,205 @@ impl Circuit {
 fn test_circuit_new() {
     let res = Circuit::new();
     assert!(res.is_ok());
+}
+
+#[test]
+fn test_circuit_public_inputs() {
+    let mut circuit = Circuit::new().unwrap();
+    let node_a = Node::random_noop().unwrap();
+    let node_b = Node::random_add().unwrap();
+
+    let mut public_inputs_len = circuit.public_inputs_len();
+    assert_eq!(public_inputs_len, 0);
+
+    let mut nodes_len = circuit.nodes_len();
+    assert_eq!(nodes_len, 0);
+
+    let res = circuit.insert_public_input(node_a.clone());
+    assert!(res.is_ok());
+
+    public_inputs_len = circuit.public_inputs_len();
+    assert_eq!(public_inputs_len, 1);
+
+    nodes_len = circuit.nodes_len();
+    assert_eq!(nodes_len, 1);
+
+    let res = circuit.insert_public_input(node_a.clone());
+    assert!(res.is_err());
+
+    public_inputs_len = circuit.public_inputs_len();
+    assert_eq!(public_inputs_len, 1);
+
+    nodes_len = circuit.nodes_len();
+    assert_eq!(nodes_len, 1);
+
+    let res = circuit.insert_public_input(node_b.clone());
+    assert!(res.is_err());
+
+    let found = circuit.lookup_public_input(&node_a.label);
+    assert!(found);
+
+    assert!(circuit.get_public_input(&node_a.label).is_some());
+    assert_eq!(circuit.get_public_input(&node_a.label).unwrap(), &node_a,);
+}
+
+#[test]
+fn test_circuit_nondet_inputs() {
+    let mut circuit = Circuit::new().unwrap();
+    let node_a = Node::random_noop().unwrap();
+    let node_b = Node::random_add().unwrap();
+
+    let mut nondet_inputs_len = circuit.nondet_inputs_len();
+    assert_eq!(nondet_inputs_len, 0);
+
+    let mut nodes_len = circuit.nodes_len();
+    assert_eq!(nodes_len, 0);
+
+    let res = circuit.insert_nondet_input(node_a.clone());
+    assert!(res.is_ok());
+
+    nondet_inputs_len = circuit.nondet_inputs_len();
+    assert_eq!(nondet_inputs_len, 1);
+
+    nodes_len = circuit.nodes_len();
+    assert_eq!(nodes_len, 1);
+
+    let res = circuit.insert_nondet_input(node_a.clone());
+    assert!(res.is_err());
+
+    nondet_inputs_len = circuit.nondet_inputs_len();
+    assert_eq!(nondet_inputs_len, 1);
+
+    nodes_len = circuit.nodes_len();
+    assert_eq!(nodes_len, 1);
+
+    let res = circuit.insert_nondet_input(node_b.clone());
+    assert!(res.is_err());
+
+    let found = circuit.lookup_nondet_input(&node_a.label);
+    assert!(found);
+
+    assert!(circuit.get_nondet_input(&node_a.label).is_some());
+    assert_eq!(circuit.get_nondet_input(&node_a.label).unwrap(), &node_a,);
+
+    let res = circuit.create_nondet_input();
+
+    assert!(res.is_ok());
+
+    nondet_inputs_len = circuit.nondet_inputs_len();
+    assert_eq!(nondet_inputs_len, 2);
+
+    nodes_len = circuit.nodes_len();
+    assert_eq!(nodes_len, 2);
+}
+
+#[test]
+fn test_circuit_internal_nodes() {
+    let mut circuit = Circuit::new().unwrap();
+
+    let node_a = Node::random_noop().unwrap();
+    circuit.insert_public_input(node_a.clone()).unwrap();
+
+    let node_b = Node::random_noop().unwrap();
+    circuit.insert_nondet_input(node_b.clone()).unwrap();
+
+    let op = Op::new_add(&node_a.label, &node_b.label).unwrap();
+    let node_c = Node::random_with_op(&op).unwrap();
+
+    let node_d = Node::random_add().unwrap();
+    let node_e = Node::random_mul().unwrap();
+    let node_f = Node::random_noop().unwrap();
+
+    let mut internal_nodes_len = circuit.internal_nodes_len();
+    assert_eq!(internal_nodes_len, 0);
+
+    let mut nodes_len = circuit.nodes_len();
+    assert_eq!(nodes_len, 2);
+
+    let res = circuit.insert_internal_node(node_c.clone());
+    assert!(res.is_ok());
+
+    internal_nodes_len = circuit.internal_nodes_len();
+    assert_eq!(internal_nodes_len, 1);
+
+    nodes_len = circuit.nodes_len();
+    assert_eq!(nodes_len, 3);
+
+    let res = circuit.insert_internal_node(node_d.clone());
+    assert!(res.is_err());
+
+    internal_nodes_len = circuit.internal_nodes_len();
+    assert_eq!(internal_nodes_len, 1);
+
+    nodes_len = circuit.nodes_len();
+    assert_eq!(nodes_len, 3);
+
+    let res = circuit.insert_internal_node(node_e.clone());
+    assert!(res.is_err());
+
+    internal_nodes_len = circuit.internal_nodes_len();
+    assert_eq!(internal_nodes_len, 1);
+
+    nodes_len = circuit.nodes_len();
+    assert_eq!(nodes_len, 3);
+
+    let res = circuit.insert_internal_node(node_f.clone());
+    assert!(res.is_err());
+
+    internal_nodes_len = circuit.internal_nodes_len();
+    assert_eq!(internal_nodes_len, 1);
+
+    nodes_len = circuit.nodes_len();
+    assert_eq!(nodes_len, 3);
+
+    let res = circuit.insert_internal_node(node_c.clone());
+    assert!(res.is_err());
+
+    let found = circuit.lookup_node(&node_c.label);
+    assert!(found);
+
+    assert!(circuit.get_node(&node_c.label).is_some());
+    assert_eq!(circuit.get_node(&node_c.label).unwrap(), &node_c,);
+}
+
+#[test]
+fn test_circuit_public_outputs() {
+    let mut circuit = Circuit::new().unwrap();
+    let node_a = Node::random_noop().unwrap();
+    let node_b = Node::random_add().unwrap();
+
+    let mut public_outputs_len = circuit.public_outputs_len();
+    assert_eq!(public_outputs_len, 0);
+
+    let mut nodes_len = circuit.nodes_len();
+    assert_eq!(nodes_len, 0);
+
+    let res = circuit.insert_public_output(node_a.clone());
+    assert!(res.is_ok());
+
+    public_outputs_len = circuit.public_outputs_len();
+    assert_eq!(public_outputs_len, 1);
+
+    nodes_len = circuit.nodes_len();
+    assert_eq!(nodes_len, 1);
+
+    let res = circuit.insert_public_output(node_a.clone());
+    assert!(res.is_err());
+
+    public_outputs_len = circuit.public_outputs_len();
+    assert_eq!(public_outputs_len, 1);
+
+    nodes_len = circuit.nodes_len();
+    assert_eq!(nodes_len, 1);
+
+    let res = circuit.insert_public_output(node_b.clone());
+    assert!(res.is_err());
+
+    let found = circuit.lookup_public_output(&node_a.label);
+    assert!(found);
+
+    assert!(circuit.get_public_output(&node_a.label).is_some());
+    assert_eq!(circuit.get_public_output(&node_a.label).unwrap(), &node_a,);
 }
 
 #[test]
