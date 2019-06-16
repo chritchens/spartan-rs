@@ -1561,6 +1561,8 @@ impl Circuit {
 
         self.nodes.insert(node.label.clone(), node);
 
+        self.nodes_len += 1;
+
         Ok(())
     }
 
@@ -1594,6 +1596,8 @@ impl Circuit {
         self.insert_node(node)?;
 
         self.public_inputs.push(label);
+
+        self.public_inputs_len += 1;
 
         Ok(())
     }
@@ -1644,6 +1648,8 @@ impl Circuit {
 
         self.nondet_inputs.push(label);
 
+        self.nondet_inputs_len += 1;
+
         Ok(())
     }
 
@@ -1681,6 +1687,8 @@ impl Circuit {
         self.insert_node(node)?;
 
         self.public_outputs.push(label);
+
+        self.public_outputs_len += 1;
 
         Ok(())
     }
