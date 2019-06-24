@@ -414,8 +414,8 @@ fn test_value_bitarray() {
 /// Was it necessary to use a cryptographic hash in this context? Not per se, but
 /// it would be needed in certain cases (eg: this kind of data is shared and retained
 /// in some networked system).
-#[derive(Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
-pub struct Label(BitArray256);
+#[derive(Copy, Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
+pub struct Label([u8; 32]);
 
 impl Label {
     /// `new` creates a new `Label` for a slice of bytes as a SHA256 hash.
@@ -425,8 +425,12 @@ impl Label {
 
     /// `random` creates a new random `Label`.
     pub fn random() -> Result<Label> {
-        let ba = BitArray256::random()?;
-        let label = Label(ba);
+        let mut buf = [0u8; 32];
+        for (i, v) in random_bytes(32)?.iter().enumerate() {
+            buf[i] = *v;
+        }
+
+        let label = Label(buf);
         Ok(label)
     }
 
@@ -435,8 +439,12 @@ impl Label {
     where
         R: RngCore,
     {
-        let ba = BitArray256::from_rng(rng)?;
-        let label = Label(ba);
+        let mut buf = [0u8; 32];
+        for (i, v) in random_bytes_from_rng(rng, 32).iter().enumerate() {
+            buf[i] = *v;
+        }
+
+        let label = Label(buf);
         Ok(label)
     }
 
@@ -446,28 +454,27 @@ impl Label {
         for (i, v) in Sha256::digest(data).as_slice().iter().enumerate() {
             hash[i] = *v;
         }
-        Label::from_bytes(hash)
+        Label(hash)
     }
 
     /// `from_bytes` creates a `Label` from an array of bytes.
     pub fn from_bytes(buf: [u8; 32]) -> Label {
-        let ba = BitArray256::from_bytes(buf);
-        Label(ba)
+        Label(buf)
     }
 
     /// `to_bytes` converts the `Label` to an array of bytes.
     pub fn to_bytes(&self) -> [u8; 32] {
-        self.0.to_bytes()
+        self.0
     }
 
     /// `from_bitarray` creates a `Label` from a `BitArray256`.
-    pub fn from_bitarray(buf: BitArray256) -> Label {
-        Label(buf)
+    pub fn from_bitarray(ba: BitArray256) -> Label {
+        Label(ba.to_bytes())
     }
 
     /// `to_bitarray` converts the `Label` to a `BitArray256`.
     pub fn to_bitarray(&self) -> BitArray256 {
-        self.0.clone()
+        BitArray256::from_bytes(self.0)
     }
 
     /// `from_node_data` creates a new `Label` from `Node` fields.
@@ -1172,16 +1179,16 @@ fn test_op_validate() {
         }
 
         let invalid_add = Op::Add {
-            a: Box::new(label.clone()),
-            b: Box::new(label.clone()),
+            a: Box::new(label),
+            b: Box::new(label),
         };
 
         let res = invalid_add.validate();
         assert!(res.is_err());
 
         let invalid_mul = Op::Mul {
-            a: Box::new(label.clone()),
-            b: Box::new(label.clone()),
+            a: Box::new(label),
+            b: Box::new(label),
         };
 
         let res = invalid_mul.validate();
@@ -1431,8 +1438,8 @@ fn test_node_new() {
         let label = Label::random().unwrap();
 
         let invalid_op = Op::Mul {
-            a: Box::new(label.clone()),
-            b: Box::new(label.clone()),
+            a: Box::new(label),
+            b: Box::new(label),
         };
 
         let res = Node::new(nonce, &invalid_op, source);
@@ -1482,8 +1489,8 @@ fn test_node_validate() {
         let label = Label::random().unwrap();
 
         let invalid_op = Op::Mul {
-            a: Box::new(label.clone()),
-            b: Box::new(label.clone()),
+            a: Box::new(label),
+            b: Box::new(label),
         };
 
         let mut invalid_op_node = node.clone();
@@ -1591,7 +1598,7 @@ impl Circuit {
             }
         }
 
-        self.nodes.insert(node.label.clone(), node);
+        self.nodes.insert(node.label, node);
 
         self.nodes_len += 1;
 
@@ -1621,7 +1628,7 @@ impl Circuit {
             return Err(err);
         }
 
-        let label = node.label.clone();
+        let label = node.label;
 
         if self.lookup_public_input(&label) {
             let err = Error::new_circuit("already found", None);
@@ -1675,7 +1682,7 @@ impl Circuit {
             return Err(err);
         }
 
-        let label = node.label.clone();
+        let label = node.label;
 
         if self.lookup_nondet_input(&label) {
             let err = Error::new_circuit("already found", None);
@@ -1718,7 +1725,7 @@ impl Circuit {
             return Err(err);
         }
 
-        let label = node.label.clone();
+        let label = node.label;
 
         if self.lookup_public_output(&label) {
             let err = Error::new_circuit("already found", None);
