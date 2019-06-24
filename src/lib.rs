@@ -4,6 +4,7 @@ use digest::Digest;
 use generic_array::{ArrayLength, GenericArray};
 use rand_core::{CryptoRng, RngCore};
 use rand_os::OsRng;
+use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use std::collections::BTreeMap;
 use std::error;
@@ -326,7 +327,7 @@ fn test_bitarray_bytes() {
 }
 
 /// `Value` is the a value in the field of order q = 2^255 -19.
-#[derive(Copy, Clone, Default, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Default, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Value(Scalar);
 
 impl Value {
@@ -414,7 +415,9 @@ fn test_value_bitarray() {
 /// Was it necessary to use a cryptographic hash in this context? Not per se, but
 /// it would be needed in certain cases (eg: this kind of data is shared and retained
 /// in some networked system).
-#[derive(Copy, Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
+#[derive(
+    Copy, Clone, Default, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize, Deserialize,
+)]
 pub struct Label([u8; 32]);
 
 impl Label {
@@ -540,7 +543,7 @@ fn test_label_bitarray() {
 }
 
 /// `Op` is an arithmetic circuit operation.
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub enum Op {
     Noop,
     Add { a: Box<Label>, b: Box<Label> },
@@ -1198,7 +1201,7 @@ fn test_op_validate() {
 
 /// `Node` is a node in the arithmetic circuit in the field of order
 /// q = 2^255 -19.
-#[derive(Clone, Default, Eq, PartialEq, Debug)]
+#[derive(Clone, Default, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Node {
     label: Label,
     pub nonce: u32,
@@ -1510,7 +1513,7 @@ fn test_node_validate() {
 }
 
 /// `Circuit` is an arithmetic circuit in the field of order q = 2^255 -19.
-#[derive(Clone, Eq, PartialEq, Default, Debug)]
+#[derive(Clone, Eq, PartialEq, Default, Debug, Serialize, Deserialize)]
 pub struct Circuit {
     pub id: [u8; 32],
     public_inputs_len: u32,
