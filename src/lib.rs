@@ -421,6 +421,9 @@ fn test_value_bitarray() {
 pub struct Label([u8; 32]);
 
 impl Label {
+    /// `LENGHT` is the bits length of the `Label`.
+    pub const LENGTH: u32 = 256;
+
     /// `new` creates a new `Label` for a slice of bytes as a SHA256 hash.
     pub fn new(data: &[u8]) -> Label {
         Label::from_hash(data)
@@ -1782,6 +1785,11 @@ impl Circuit {
         self.insert_node(node)
     }
 
+    /// `g_polynomial` calculates the G polynomial of the `Circuit` given a value tau.
+    pub fn g_polynomial(_tau: Value) -> Result<Vec<Value>> {
+        unreachable!() // TODO
+    }
+
     /// `to_bytes` converts the `Circuit` to a vector of bytes.
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
         let mut buf = Vec::new();
@@ -2333,4 +2341,113 @@ fn test_circuit_validate() {
     let new = Circuit::new().unwrap();
     let res = new.validate();
     assert!(res.is_ok());
+}
+
+/// `Commitment` is a commitment to a multilinear polynomial.
+pub struct Commitment;
+
+/// `ProverInterface` is a trait implemented by Spartan provers.
+pub trait ProverInterface {
+    /// `get_commit` receives a `Commitment` to the multilinear polynomial Z'.
+    fn get_commit(&self) -> Result<Commitment>;
+
+    /// `set_tau` sets the random `Value` tau.
+    fn set_tau(&mut self, _tau: Value) -> Result<()>;
+
+    /// `eval_values` evaluates three values in Z'.
+    fn eval_values(&mut self, _z1: Value, _z2: Value, _z3: Value) -> Result<(Value, Value, Value)>;
+
+    /// `poly_eval` decommits the evaluation of Z' of a specific value.
+    fn poly_eval(&mut self, _z: Value) -> Result<(Value, Value)>;
+
+    /// `poly_evals` decommits the evalution of Z' of three given values.
+    fn poly_evals(&mut self, _z1: Value, _z2: Value, _z3: Value) -> Result<(Value, Value)>;
+}
+
+/// `LocalProver` is a local Spartan protocol prover.
+pub struct LocalProver;
+
+/// `RemoveProver` is a remote Spartan protocol prover.
+pub struct RemoteProver;
+
+/// GPolynomial is the type of the G multilinear polynomial on the Circuit C.
+pub struct GPolynomial {
+    pub circuit: Circuit,
+    pub tau: Value,
+}
+
+impl GPolynomial {
+    // `new` creates a new `GPolynomial`.
+    pub fn new(_circuit: &Circuit, _tau: Value) -> Result<GPolynomial> {
+        unreachable!() // TODO
+    }
+}
+
+/// `Verifier` is a Spartan protocol verifier.
+pub struct Verifier {
+    pub circuit: Circuit,
+    pub xs: Vec<Value>,
+    pub yx: Vec<Value>,
+    pub poly_param: Value,
+    pub comp_param: Value,
+    pub comp_commit: Commitment,
+}
+
+impl Verifier {
+    /// `new` creates a new `Verifier`.
+    pub fn new(_circuit: &Circuit,
+               _xs: Vec<Value>,
+               _yx: Vec<Value>,
+               _poly_param: Value,
+               _comp_param: Value,
+               _comp_commit: Commitment,
+    ) -> Result<Verifier> {
+        unreachable!() // TODO
+    }
+
+    /// `sumcheck` calculates the sumcheck of a `GPolynomial`.
+    pub fn sumcheck(&self, _g: GPolynomial, _m: u32, _h: u32, _l: u32) -> Result<(Value, Value, Value, Value)> {
+        unreachable!() // TODO
+    }
+
+    /// `reduce` reduces the sumcheck and evaluated values.
+    #[allow(clippy::too_many_arguments)]
+    pub fn reduce(&self, _s: u32, _z1: Value, _v1: Value, _z2: Value, _v2: Value, _z3: Value, _v3: Value) -> Result<(Value, Value)> {
+        unreachable!() // TODO
+    }
+
+    /// `poly_eval_verify` verifies the `poly_eval` operation of an implementor
+    /// of `ProverInterface`.
+    pub fn poly_eval_verify(&self, _zc: Commitment, _z4: Value, _v4: Value, _pi4: Value) -> Result<bool> {
+        unreachable!() // TODO
+    }
+
+    /// `exec` execs the `Verifier` against a `ProverInterface` implementor.
+    #[allow(clippy::many_single_char_names)]
+    pub fn exec<P: ProverInterface>(&self, prover: &mut P) -> Result<bool> {
+        let zc = prover.get_commit()?;
+
+        let tau = Value::random()?;
+        prover.set_tau(tau)?;
+
+        let m = 3*Label::LENGTH;
+        let h = 0;
+        let l = 3;
+
+        let g = GPolynomial::new(&self.circuit, tau)?;
+        let (_e, z1, z2, z3) = self.sumcheck(g, m, h, l)?;
+
+        let (v1, v2, v3) = prover.eval_values(z1, z2, z3)?;
+        let (z4, v4) = self.reduce(Label::LENGTH, z1, v1, z2, v2, z3, v3)?;
+
+        let (_v4i, pi4) = prover.poly_eval(z4)?;
+        let b = self.poly_eval_verify(zc, z4, v4, pi4)?;
+        if !b {
+            return Ok(false);
+        }
+
+        // TODO
+
+        Ok(false)
+    }
 }
