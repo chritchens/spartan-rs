@@ -1979,7 +1979,7 @@ impl Circuit {
             nodes,
         };
 
-        //circuit.validate()?;
+        circuit.validate()?;
 
         Ok(circuit)
     }
