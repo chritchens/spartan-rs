@@ -7,10 +7,11 @@ use rand_os::OsRng;
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use std::collections::BTreeMap;
+use std::convert::From;
 use std::error;
 use std::fmt;
 use std::io::{Cursor, Read};
-use std::ops::{Index, IndexMut};
+use std::ops::{Add, Index, IndexMut, Mul, Sub};
 use std::result;
 use typenum::consts::U256;
 
@@ -388,6 +389,36 @@ impl Value {
     }
 }
 
+impl From<Scalar> for Value {
+    fn from(scalar: Scalar) -> Value {
+        Value(scalar)
+    }
+}
+
+impl Add<Value> for Value {
+    type Output = Value;
+
+    fn add(self, other: Value) -> Value {
+        self.0.add(other.0).into()
+    }
+}
+
+impl Sub<Value> for Value {
+    type Output = Value;
+
+    fn sub(self, other: Value) -> Value {
+        self.0.sub(other.0).into()
+    }
+}
+
+impl Mul<Value> for Value {
+    type Output = Value;
+
+    fn mul(self, other: Value) -> Value {
+        self.0.mul(other.0).into()
+    }
+}
+
 #[test]
 fn test_value_bites() {
     for _ in 0..10 {
@@ -506,6 +537,12 @@ impl Label {
         let label = Label::new(&buf);
 
         Ok(label)
+    }
+}
+
+impl From<[u8; 32]> for Label {
+    fn from(buf: [u8; 32]) -> Label {
+        Label(buf)
     }
 }
 
@@ -1785,8 +1822,8 @@ impl Circuit {
         self.insert_node(node)
     }
 
-    /// `g_polynomial` calculates the G polynomial of the `Circuit` given a value tau.
-    pub fn g_polynomial(_tau: Value) -> Result<Vec<Value>> {
+    /// `eval_ixy` evals the function Ixy on a given label.
+    pub fn eval_ixy(&self, _label: Label) -> Result<Value> {
         unreachable!() // TODO
     }
 
@@ -2355,13 +2392,21 @@ pub trait ProverInterface {
     fn set_tau(&mut self, _tau: Value) -> Result<()>;
 
     /// `eval_values` evaluates three values in Z'.
-    fn eval_values(&mut self, _z1: Value, _z2: Value, _z3: Value) -> Result<(Value, Value, Value)>;
+    fn eval_values(&mut self, _z1: Label, _z2: Label, _z3: Label) -> Result<(Value, Value, Value)>;
 
     /// `poly_eval` decommits the evaluation of Z' of a specific value.
-    fn poly_eval(&mut self, _z: Value) -> Result<(Value, Value)>;
+    fn poly_eval(&mut self, _z: Label) -> Result<(Value, Value)>;
 
     /// `poly_evals` decommits the evalution of Z' of three given values.
-    fn poly_evals(&mut self, _z1: Value, _z2: Value, _z3: Value) -> Result<(Value, Value)>;
+    fn poly_evals(&mut self, _z1: Label, _z2: Label, _z3: Label) -> Result<(Value, Value)>;
+
+    /// `decommit_computation` TODO
+    fn decommit_computation(
+        &mut self,
+        _z1: Label,
+        _z2: Label,
+        _z3: Label,
+    ) -> Result<((Value, Value, Value), Value)>;
 }
 
 /// `LocalProver` is a local Spartan protocol prover.
@@ -2395,30 +2440,64 @@ pub struct Verifier {
 
 impl Verifier {
     /// `new` creates a new `Verifier`.
-    pub fn new(_circuit: &Circuit,
-               _xs: Vec<Value>,
-               _yx: Vec<Value>,
-               _poly_param: Value,
-               _comp_param: Value,
-               _comp_commit: Commitment,
+    pub fn new(
+        _circuit: &Circuit,
+        _xs: Vec<Value>,
+        _yx: Vec<Value>,
+        _poly_param: Value,
+        _comp_param: Value,
+        _comp_commit: Commitment,
     ) -> Result<Verifier> {
         unreachable!() // TODO
     }
 
     /// `sumcheck` calculates the sumcheck of a `GPolynomial`.
-    pub fn sumcheck(&self, _g: GPolynomial, _m: u32, _h: u32, _l: u32) -> Result<(Value, Value, Value, Value)> {
+    pub fn sumcheck(
+        &self,
+        _g: GPolynomial,
+        _m: u32,
+        _h: u32,
+        _l: u32,
+    ) -> Result<(Value, Label, Label, Label)> {
         unreachable!() // TODO
     }
 
     /// `reduce` reduces the sumcheck and evaluated values.
     #[allow(clippy::too_many_arguments)]
-    pub fn reduce(&self, _s: u32, _z1: Value, _v1: Value, _z2: Value, _v2: Value, _z3: Value, _v3: Value) -> Result<(Value, Value)> {
+    pub fn reduce(
+        &self,
+        _s: u32,
+        _z1: Label,
+        _v1: Value,
+        _z2: Label,
+        _v2: Value,
+        _z3: Label,
+        _v3: Value,
+    ) -> Result<(Label, Value)> {
         unreachable!() // TODO
     }
 
     /// `poly_eval_verify` verifies the `poly_eval` operation of an implementor
     /// of `ProverInterface`.
-    pub fn poly_eval_verify(&self, _zc: Commitment, _z4: Value, _v4: Value, _pi4: Value) -> Result<bool> {
+    pub fn poly_eval_verify(
+        &self,
+        _zc: Commitment,
+        _z4: Label,
+        _v4: Value,
+        _pi4: Value,
+    ) -> Result<bool> {
+        unreachable!() // TODO
+    }
+
+    /// `decommit_computation_verify` verifies a `decommit_computation`.
+    pub fn decommit_computation_verify(
+        &self,
+        _z1: Label,
+        _z2: Label,
+        _z3: Label,
+        _v: (Value, Value, Value),
+        _pi: Value,
+    ) -> Result<bool> {
         unreachable!() // TODO
     }
 
@@ -2430,24 +2509,45 @@ impl Verifier {
         let tau = Value::random()?;
         prover.set_tau(tau)?;
 
-        let m = 3*Label::LENGTH;
+        let m = 3 * Label::LENGTH;
         let h = 0;
         let l = 3;
 
         let g = GPolynomial::new(&self.circuit, tau)?;
-        let (_e, z1, z2, z3) = self.sumcheck(g, m, h, l)?;
+        let (e, z1, z2, z3) = self.sumcheck(g, m, h, l)?;
 
         let (v1, v2, v3) = prover.eval_values(z1, z2, z3)?;
         let (z4, v4) = self.reduce(Label::LENGTH, z1, v1, z2, v2, z3, v3)?;
 
-        let (_v4i, pi4) = prover.poly_eval(z4)?;
+        let (_, pi4) = prover.poly_eval(z4)?;
         let b = self.poly_eval_verify(zc, z4, v4, pi4)?;
         if !b {
             return Ok(false);
         }
 
-        // TODO
+        let vxy = self.circuit.eval_ixy(z1)?;
 
-        Ok(false)
+        let (v, pi) = prover.decommit_computation(z1, z2, z3)?;
+        let b = self.decommit_computation_verify(z1, z2, z3, v, pi)?;
+        if !b {
+            return Ok(false);
+        }
+
+        let (vadd, vmul, vio) = v;
+
+        let vio_ = vio * (vxy - v1);
+        let vmul_ = vmul * (v1 - (v2 * v3));
+        let vadd_ = vadd * (v1 - (v2 + v3) + vmul_);
+        let prod_ = st_prod(z1, z2, z3, tau)?;
+        if e != (vio_ + vadd_) * prod_ {
+            return Ok(false);
+        }
+
+        Ok(true)
     }
+}
+
+/// `st_prod` is a product component of a `GPolynomial`.
+fn st_prod(_z1: Label, _z2: Label, _z3: Label, _tau: Value) -> Result<Value> {
+    unreachable!() // TODO
 }
